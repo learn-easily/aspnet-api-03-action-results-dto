@@ -1,0 +1,1476 @@
+<!-- =========================================================
+     ლექცია 3 — API-ის პასუხები: IActionResult და DTO
+     ფერები:
+       წარმატება / 2xx / Response DTO = მწვანე · კლიენტის შეცდომა / 4xx = ქარვისფერი
+       სერვერის შეცდომა / 5xx / გაპარული მონაცემი = წითელი · Request / Request DTO = ლურჯი
+       Entity (Product) = ქარვისფერი · Controller = იისფერი · Framework = ზღვისფერი (teal)
+     ========================================================= -->
+<style>
+.swr{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;font-family:system-ui,sans-serif}
+.swr .rh{display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #e5e5e5;background:color-mix(in srgb,var(--c) 10%,#fff)}
+.swr .rh .m{font:800 14px var(--mono);color:#fff;background:var(--c);border-radius:4px;padding:5px 0;width:78px;text-align:center}
+.swr .rh .p{font:700 17px var(--mono);color:#3b4151}
+.swr .lab{font:700 13px var(--font);color:#3b4151;padding:10px 16px 2px;display:flex;gap:60px;opacity:.8}
+.swr .rr{display:grid;grid-template-columns:70px 1fr;gap:14px;padding:4px 16px 14px;align-items:start}
+.swr .sc{font:800 22px var(--mono);color:#3b4151;padding-top:4px}
+.swr .sc.bad{color:var(--red)}
+.swr .rb{background:#41444e;color:#fff;font:600 16px/1.5 var(--mono);padding:10px 14px;border-radius:6px;white-space:pre;margin:0}
+.swr .rb .k{color:#a5d6ff}.swr .rb .s{color:#a2fca2}.swr .rb .n{color:#fcc28c}
+.swr .hdr{font:600 14px/1.6 var(--mono);color:#3b4151;margin-top:6px}
+.swr .hdr b{color:#3b4151}
+.ring{box-shadow:0 0 0 3px var(--red);border-radius:6px;padding:0 6px}
+.fam{display:grid;grid-template-columns:120px 1fr 1.25fr;align-items:center;gap:18px;padding:12px 20px;border-radius:14px;background:#fff;border:1px solid var(--line);border-left:7px solid var(--a);box-shadow:var(--shadow);margin:10px 0}
+.fam .x{font:800 34px var(--mono);color:var(--a)}
+.fam .t{font-size:23px;font-weight:700;color:var(--ink)}
+.fam .d{font-size:19px;color:var(--ink2)}
+.fam.dim{opacity:.55}
+.toast{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px 20px;font-size:22px;font-weight:700;color:var(--ink)}
+.toast .e{font-size:30px}
+.lie{position:relative}
+.lie::after{content:"სინამდვილეში არაფერი წაშლილა";position:absolute;right:-8px;top:-16px;transform:rotate(4deg);background:var(--red);color:#fff;font:700 15px var(--font);padding:4px 12px;border-radius:8px}
+.stbadge{display:inline-block;font:800 17px var(--mono);color:#fff;background:var(--a);border-radius:8px;padding:3px 10px;min-width:56px;text-align:center}
+.mrow{display:grid;grid-template-columns:330px 110px 1fr;gap:16px;align-items:center;padding:10px 18px;border-radius:12px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);margin:8px 0}
+.mrow .c{font:700 19px var(--mono);color:var(--ink)}
+.mrow .w{font-size:18px;color:var(--ink2)}
+table.t td .old{color:var(--red);font:700 17px var(--mono)}
+table.t td .new{color:var(--mvc);font:700 17px var(--mono)}
+.dto{border-radius:14px;border:2px solid var(--a);background:color-mix(in srgb,var(--a) 7%,#fff);padding:12px 16px;min-width:0}
+.dto .h{font:800 15px var(--mono);color:var(--a);margin-bottom:6px;overflow-wrap:anywhere}
+.dto .f{font:600 16px/1.7 var(--mono);color:var(--ink2)}
+.dto .f .no{color:var(--muted);text-decoration:line-through}
+.dto .f .add{color:var(--mvc);font-weight:800}
+.rb .leak{background:rgba(248,113,113,.3);box-shadow:0 0 0 2px #f87171}
+.leak{background:#fef2f2;color:#991b1b;border-radius:4px;padding:0 4px;box-shadow:0 0 0 2px #fca5a5}
+.mc{flex-direction:column;align-items:flex-start;gap:8px;padding:22px 24px}
+.mc .m{font-size:24px!important}
+.mc .t{font-size:20px}
+</style>
+
+<!-- 1. TITLE -->
+<section class="slide" data-section="შესავალი">
+  <div class="vcenter" style="max-width:820px">
+    <div class="kicker in" style="color:var(--mvc)">ASP.NET Core Web API · ლექცია 3</div>
+    <h1 class="in" style="--d:.15s">API-ის <span class="grad">პასუხი</span></h1>
+    <p class="lead in mt" style="--d:.35s">სტატუს კოდი, <b>IActionResult</b> და <b>DTO</b> — რას და როგორ ვუბრუნებთ კლიენტს</p>
+  </div>
+  <div class="abs" style="right:90px;top:150px;width:560px">
+    <div class="swr in" style="--d:.4s;--c:#61affe">
+      <div class="rh"><span class="m">GET</span><span class="p">/api/products/99</span></div>
+      <div class="rr" style="padding-top:12px"><span class="sc bad">404</span><pre class="rb">{
+  <span class="k">"title"</span>: <span class="s">"Not Found"</span>,
+  <span class="k">"status"</span>: <span class="n">404</span>
+}</pre></div>
+    </div>
+    <div class="swr in" style="--d:.7s;--c:#49cc90;margin-top:22px">
+      <div class="rh"><span class="m">POST</span><span class="p">/api/products</span></div>
+      <div class="rr" style="padding-top:12px"><span class="sc" style="color:#16a34a">201</span><pre class="rb">{
+  <span class="k">"id"</span>: <span class="n">4</span>,
+  <span class="k">"name"</span>: <span class="s">"მონიტორი"</span>,
+  <span class="k">"price"</span>: <span class="n">650</span>
+}</pre></div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:00 · 2 წთ
+~ სლაიდი ღიაა, სანამ სტუდენტები სხდებიან.
+გამარჯობა! წინა ლექციაზე CRUD დავწერეთ — ხუთივე endpoint მუშაობს. დღეს ვნახავთ, რომ „მუშაობს“ და „სწორად პასუხობს“ ერთი და იგივე არ არის.
+დღის თემა — API-ის პასუხი: რა სტატუს კოდით ვპასუხობთ და რა ფორმის მონაცემს ვაბრუნებთ. მარჯვნივ ორი პასუხია: 404 და 201. საათნახევარში ზუსტად ასეთ პასუხებს დავაბრუნებთ.
+  </aside>
+</section>
+
+<!-- 2. RECALL — WHAT WE WROTE -->
+<section class="slide" data-section="შესავალი">
+  <div class="kicker">გავიხსენოთ · ლექცია 2</div>
+  <h2>წინა ლექციაზე <span class="grad">ასე დავწერეთ</span></h2>
+  <div class="grid2" style="grid-template-columns:1.3fr 1fr;align-items:start;gap:30px">
+    <code-block id="old" lang="csharp" cls="xs" title="Controllers/ProductsController.cs">
+[HttpGet]
+public List<Product> GetAll()
+{
+    return _products;
+}
+
+[HttpGet("{id}")]
+public object GetById(int id)
+{
+    var product = _products.FirstOrDefault(p => p.Id == id);
+    if (product is null)
+        return "პროდუქტი ვერ მოიძებნა";
+    return product;
+}
+
+[HttpDelete("{id}")]
+public string Delete(int id)
+{
+    var product = _products.FirstOrDefault(p => p.Id == id);
+    if (product is null)
+        return "პროდუქტი ვერ მოიძებნა";
+    _products.Remove(product);
+    return "წაიშალა";
+}
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="old" data-lines="1-5"></i>
+      <div class="callout step" data-with style="--a:var(--net)">სიას <b>პირდაპირ</b> ვაბრუნებთ — <code class="i">List&lt;Product&gt;</code></div>
+      <i class="codestep" data-for="old" data-lines="7-14"></i>
+      <div class="callout step" data-with style="--a:var(--asp)">ან პროდუქტი, ან ტექსტი — ამიტომ ტიპი <code class="i">object</code></div>
+      <i class="codestep" data-for="old" data-lines="16-24"></i>
+      <div class="callout step" data-with style="--a:var(--red)">შეცდომაც <b>ტექსტია</b> და წარმატებაც <b>ტექსტია</b></div>
+      <div class="callout step" style="--a:var(--api)">კოდი კომპილირდება, Swagger-ში ყველაფერი მუშაობს. <b>მაშ, რა პრობლემაა?</b> 🤔</div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:02 · 3 წთ
+~ თუ კლასში სხვანაირად დაწერეთ, აქ შენი ვარიანტი აჩვენე — იდეა იგივეა: მონაცემს ან ტექსტს პირდაპირ ვაბრუნებთ.
+ასე დავასრულეთ წინა ლექცია.
+→ GetAll
+GetAll სიას პირდაპირ აბრუნებს.
+→ GetById
+GetById-ში ორი შემთხვევაა: პროდუქტი იპოვა — ვაბრუნებთ, ვერ იპოვა — ტექსტს. ორი სხვადასხვა ტიპი, ამიტომ მეთოდს object დავუწერეთ.
+→ Delete
+Delete-ში — ორივე შემთხვევაში ტექსტი: „წაიშალა“ ან „ვერ მოიძებნა“.
+→ კითხვა
+? ყველაფერი მუშაობს. რა შეიძლება იყოს აქ არასწორი? (მოუსმინე პასუხებს — სწორს ჯერ ნუ იტყვი.)
+  </aside>
+</section>
+
+<!-- 3. SWAGGER: BOTH 200 -->
+<section class="slide" data-section="შესავალი">
+  <div class="kicker">Swagger-ში ვცდით</div>
+  <h2>წაშლა: <span class="c-mvc">მოხერხდა</span> და <span class="c-red">ვერ მოხერხდა</span></h2>
+  <div class="grid2" style="gap:40px;align-items:start">
+    <div class="swr step left" style="--c:#f93e3e">
+      <div class="rh"><span class="m">DELETE</span><span class="p">/api/products/2</span></div>
+      <div class="lab"><span>Code</span><span>Response body</span></div>
+      <div class="rr"><span class="sc"><span class="ring">200</span></span><pre class="rb"><span class="s">წაიშალა</span></pre></div>
+    </div>
+    <div class="swr step right" style="--c:#f93e3e">
+      <div class="rh"><span class="m">DELETE</span><span class="p">/api/products/99</span></div>
+      <div class="lab"><span>Code</span><span>Response body</span></div>
+      <div class="rr"><span class="sc"><span class="ring">200</span></span><pre class="rb"><span class="s">პროდუქტი ვერ მოიძებნა</span></pre></div>
+    </div>
+  </div>
+  <div class="center step" style="height:auto;margin-top:46px">
+    <div class="problem" style="font-size:26px">ორივე პასუხი — <b>200 OK</b>. წარმატება და შეცდომა სტატუსით <b>ერთნაირია</b></div>
+  </div>
+  <aside class="notes">
+⏱ 0:05 · 3 წთ
+~ Swagger-ში ცოცხლად აჩვენე: ჯერ არსებული Id, მერე 99.
+→ Id = 2
+ვშლით მეორე პროდუქტს. პასუხი: 200, „წაიშალა“. აქამდე ყველაფერი კარგადაა.
+→ Id = 99
+ახლა ვშლით პროდუქტს, რომელიც არ არსებობს. პასუხი: „ვერ მოიძებნა“. ტექსტი სწორია. ახლა სტატუს კოდს შეხედეთ.
+→ პრობლემა
+? რა კოდია ორივეგან? (200.) 200 ნიშნავს „ყველაფერი კარგადაა“. ! ჩვენ შეცდომაზე ვეუბნებით კლიენტს: „ყველაფერი კარგადაა“. ადამიანი ტექსტს წაიკითხავს და მიხვდება. მაგრამ API-ს ადამიანი არ იძახებს.
+  </aside>
+</section>
+
+<!-- 4. FRONTEND VIEW -->
+<section class="slide" data-section="შესავალი">
+  <div class="kicker">ვინ კითხულობს პასუხს?</div>
+  <h2>Frontend-ის <span class="c-pink">თვალით</span></h2>
+  <div class="grid2" style="grid-template-columns:1.2fr 1fr;align-items:center;gap:40px">
+    <code-block id="fe" lang="javascript" cls="sm" title="frontend · products.js">
+const res = await fetch("/api/products/99", {
+    method: "DELETE"
+});
+
+if (res.ok) {          // სტატუსი 200–299?
+    showMessage("✅ პროდუქტი წაიშალა");
+} else {
+    showMessage("❌ პროდუქტი ვერ მოიძებნა");
+}
+    </code-block>
+    <div class="col" style="gap:22px">
+      <i class="codestep" data-for="fe" data-lines="1-3"></i>
+      <div class="callout step" data-with style="--a:var(--pink)">საიტი ჩვენს API-ს იძახებს — ზუსტად ისე, როგორც Swagger</div>
+      <i class="codestep" data-for="fe" data-lines="5-9"></i>
+      <div class="callout step" data-with style="--a:var(--api)">გადაწყვეტილებას <b>სტატუს კოდით</b> იღებს და არა ტექსტით</div>
+      <div class="toast lie step zoom"><span class="e">✅</span>პროდუქტი წაიშალა</div>
+      <div class="solve step">ტექსტი — <b>ადამიანისთვისაა</b>. სტატუს კოდი — <b>პროგრამისთვის</b></div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:08 · 3 წთ
+ჩვენს API-ს რეალურად frontend-ი იძახებს — React, Angular, მობილური აპლიკაცია.
+→ fetch
+JavaScript-ში მოთხოვნა ასე იგზავნება — ზუსტად იგივე DELETE, რაც Swagger-ში გავაგზავნეთ.
+→ if
+! frontend-ი პასუხის ტექსტს არ კითხულობს. ის სტატუს კოდს უყურებს: res.ok ნიშნავს, რომ კოდი 200-დან 299-მდეა.
+→ შედეგი
+? ჩვენ 200 დავაბრუნეთ. რას აჩვენებს საიტი? — „პროდუქტი წაიშალა“. სინამდვილეში კი არაფერი წაშლილა. მომხმარებელს ვატყუებთ.
+→ წესი
+? ტექსტის შედარება ხომ შეიძლება — if (text == "ვერ მოიძებნა")? (შეიძლება, მაგრამ ხვალ ტექსტს შევცვლით, ინგლისურად ვთარგმნით — და frontend გატყდება.) ! ტექსტი ადამიანისთვისაა, სტატუს კოდი — პროგრამისთვის.
+  </aside>
+</section>
+
+<!-- 5. ROADMAP -->
+<section class="slide" data-section="შესავალი">
+  <div class="kicker">დღის გზა</div>
+  <h2>სადამდე მოვედით და სად მივდივართ</h2>
+  <svg viewBox="0 0 1420 470" width="1420" height="470">
+    <path class="autodraw" style="--d:.2s" d="M70 230 C170 90 250 380 340 230 S520 90 590 230 S760 380 830 230 S1000 90 1080 230 S1250 380 1350 230" stroke="#cfc6b6" stroke-width="4" fill="none" stroke-dasharray="10 10"/>
+    <g class="in zoom" style="--d:.3s;transform-origin:70px 230px"><circle cx="70" cy="230" r="42" fill="#f3effe" stroke="#6d28d9" stroke-width="3"/><text x="70" y="245" text-anchor="middle" font-size="32">🛒</text><text x="70" y="306" text-anchor="middle" class="tw b" font-size="19">CRUD</text><text x="70" y="332" text-anchor="middle" class="tg b" font-size="15">✓ წინა ლექცია</text><circle cx="101" cy="199" r="14" fill="#16a34a"/><text x="101" y="205" text-anchor="middle" font-size="16" style="fill:#fff" class="b">✓</text></g>
+    <g class="step zoom" style="transform-origin:300px 170px"><circle cx="300" cy="170" r="44" fill="#eaf2fe" stroke="#2563eb" stroke-width="3"/><text x="300" y="185" text-anchor="middle" font-size="34">📨</text><text x="300" y="96" text-anchor="middle" class="tw b" font-size="19">HTTP პასუხი</text><text x="300" y="72" text-anchor="middle" class="tm" font-size="15">სტატუს კოდები</text></g>
+    <g class="step zoom" style="transform-origin:560px 240px"><circle cx="560" cy="240" r="44" fill="#eaf8ef" stroke="#16a34a" stroke-width="3"/><text x="560" y="255" text-anchor="middle" font-size="34">🎛️</text><text x="560" y="316" text-anchor="middle" class="tw b" font-size="19">IActionResult</text><text x="560" y="342" text-anchor="middle" class="tm" font-size="15">Ok · NotFound · Created…</text></g>
+    <g class="step zoom" style="transform-origin:820px 180px"><circle cx="820" cy="180" r="44" fill="#e6f6f4" stroke="#0d9488" stroke-width="3"/><text x="820" y="195" text-anchor="middle" font-size="34">📘</text><text x="820" y="106" text-anchor="middle" class="tw b" font-size="19">ActionResult&lt;T&gt;</text><text x="820" y="82" text-anchor="middle" class="tm" font-size="15">Swagger-ისთვის</text></g>
+    <g class="step zoom" style="transform-origin:1080px 260px"><circle cx="1080" cy="260" r="44" fill="#fef5e4" stroke="#d97706" stroke-width="3"/><text x="1080" y="275" text-anchor="middle" font-size="34">📦</text><text x="1080" y="336" text-anchor="middle" class="tw b" font-size="19">DTO</text><text x="1080" y="362" text-anchor="middle" class="tm" font-size="15">Request · Response</text></g>
+    <g class="step zoom" style="transform-origin:1350px 230px"><circle cx="1350" cy="230" r="48" fill="#eaf8ef" stroke="#16a34a" stroke-width="4" class="pulse"/><text x="1350" y="246" text-anchor="middle" font-size="38">⌨️</text><text x="1350" y="314" text-anchor="middle" class="tg b" font-size="19">პრაქტიკა</text><text x="1350" y="340" text-anchor="middle" class="tm" font-size="15">LibraryApi</text></g>
+  </svg>
+  <aside class="notes">
+⏱ 0:11 · 1 წთ
+გეგმა ასეთია.
+→ HTTP პასუხი
+ჯერ ვნახავთ, რისგან შედგება HTTP პასუხი და რას ნიშნავს სტატუს კოდები.
+→ IActionResult
+მერე ვისწავლით, როგორ დავაბრუნოთ Controller-იდან სწორი სტატუსი.
+→ ActionResult&lt;T&gt;
+შემდეგ — მისი უკეთესი ვერსია, რომელიც Swagger-საც ეხმარება.
+→ DTO
+შესვენების შემდეგ — მეორე დიდი თემა: რა ფორმის მონაცემს ვიღებთ და ვაბრუნებთ.
+→ პრაქტიკა
+ბოლოს — თქვენი LibraryApi.
+  </aside>
+</section>
+
+<!-- ============ PART 1: HTTP RESPONSE ============ -->
+<section class="slide divider" data-section="1 · HTTP პასუხი">
+  <div class="vcenter">
+    <div class="kicker in">ნაწილი 1</div>
+    <h1 class="in" style="--d:.1s">HTTP <span class="grad">პასუხი</span></h1>
+    <p class="lead mt in" style="--d:.3s">რისგან შედგება ის, რასაც სერვერი კლიენტს უბრუნებს</p>
+  </div>
+  <div class="big-num">01</div>
+  <aside class="notes">
+⏱ 0:12
+სანამ კოდს შევცვლით, გავიგოთ, რას ვაბრუნებთ სინამდვილეში.
+  </aside>
+</section>
+
+<!-- 7. RESPONSE ANATOMY -->
+<section class="slide" data-section="1 · HTTP პასუხი">
+  <div class="kicker">ანატომია</div>
+  <h2>პასუხის <span class="grad">სამი ნაწილი</span></h2>
+  <div class="grid2" style="grid-template-columns:1.25fr 1fr;align-items:start;gap:34px">
+    <code-block id="an" lang="http" cls="big" title="HTTP პასუხი">
+HTTP/1.1 201 Created
+Content-Type: application/json; charset=utf-8
+Location: /api/products/4
+Date: Sun, 25 Oct 2026 10:15:00 GMT
+
+{"id":4,"name":"მონიტორი","price":650}
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="an" data-lines="1"></i>
+      <div class="callout step" data-with style="--a:var(--mvc)"><span class="lnum" style="--a:var(--mvc)">1</span><b>Status line</b> — სტატუს კოდი: <b>რა მოხდა</b></div>
+      <i class="codestep" data-for="an" data-lines="2-4"></i>
+      <div class="callout step" data-with style="--a:var(--api)"><span class="lnum" style="--a:var(--api)">2</span><b>Headers</b> — დამატებითი ინფორმაცია: რა ფორმატია, სად არის ახალი რესურსი</div>
+      <i class="codestep" data-for="an" data-lines="6"></i>
+      <div class="callout step" data-with style="--a:var(--asp)"><span class="lnum" style="--a:var(--asp)">3</span><b>Body</b> — თვითონ მონაცემი (JSON). შეიძლება <b>ცარიელიც</b> იყოს</div>
+    </div>
+  </div>
+  <div class="card accent step mt" style="--a:var(--pink);display:flex;align-items:center;gap:22px;padding:18px 26px">
+    <span class="big-emoji">✉️</span><p class="small">როგორც წერილი: <b>შტამპი კონვერტზე</b> = სტატუსი · <b>მისამართი და მარკა</b> = headers · <b>წერილი შიგნით</b> = body. ფოსტალიონი წერილს არ ხსნის — კონვერტს უყურებს</p>
+  </div>
+  <aside class="notes">
+⏱ 0:12 · 4 წთ
+ასე გამოიყურება ნამდვილი HTTP პასუხი, რომელსაც სერვერი აგზავნის. ~ Swagger-ში ეს ყველაფერი „Response headers“ და „Response body“ ველებშია.
+→ Status line
+პირველი ხაზი — სტატუსი. რიცხვი და მოკლე სახელი: 201 Created. აქ წერია, რა მოხდა.
+→ Headers
+შემდეგ — headers: დამატებითი ინფორმაცია. Content-Type ამბობს: „ეს JSON-ია“. Location — სად შეიძლება ახლად შექმნილი პროდუქტის ნახვა. ამას POST-ზე დავუბრუნდებით.
+→ Body
+ცარიელი ხაზის შემდეგ — body, თვითონ მონაცემი. ! body შეიძლება საერთოდ არ იყოს, მაგალითად წაშლისას. სტატუსი კი ყოველთვის არის.
+→ წერილი
+ანალოგია: წერილი. ფოსტალიონი წერილს არ ხსნის — კონვერტს უყურებს. ზუსტად ასევე, frontend-ი და ბრაუზერი ჯერ სტატუსს უყურებენ, body-ს მერე.
+  </aside>
+</section>
+
+<!-- 8. STATUS FAMILIES -->
+<section class="slide" data-section="1 · HTTP პასუხი">
+  <div class="kicker">სტატუს კოდები</div>
+  <h2>ხუთი <span class="grad">ოჯახი</span> — პირველი ციფრი ყველაფერს ამბობს</h2>
+  <div class="fam dim in" style="--a:#7b8096;--d:.1s"><span class="x">1xx</span><span class="t">ინფორმაცია</span><span class="d">„მივიღე, ვაგრძელებ“ — ჩვენ არ ვიყენებთ</span></div>
+  <div class="fam step" style="--a:var(--mvc)"><span class="x">2xx</span><span class="t">✅ წარმატება</span><span class="d">ყველაფერი კარგად წავიდა</span></div>
+  <div class="fam dim in" style="--a:#7b8096;--d:.2s"><span class="x">3xx</span><span class="t">↪ გადამისამართება</span><span class="d">„სხვაგან მოძებნე“ — ბრაუზერი თვითონ აკეთებს</span></div>
+  <div class="fam step" style="--a:var(--asp)"><span class="x">4xx</span><span class="t">🙋 კლიენტის შეცდომა</span><span class="d">„<b>შენ</b> შეცდი“: არასწორი მონაცემი, არარსებული რესურსი</span></div>
+  <div class="fam step" style="--a:var(--red)"><span class="x">5xx</span><span class="t">💥 სერვერის შეცდომა</span><span class="d">„<b>მე</b> შევცდი“: კოდში exception, ბაზა არ პასუხობს</span></div>
+  <aside class="notes">
+⏱ 0:16 · 3 წთ
+სტატუს კოდი სამნიშნა რიცხვია. ! პირველი ციფრი ოჯახს ნიშნავს — უკვე მისით ვიცით, რა მოხდა.
+1xx და 3xx ჩვენ ხელით თითქმის არასდროს ვაბრუნებთ — ბრაუზერი და სერვერი თვითონ იყენებენ.
+→ 2xx
+2xx — წარმატება. მოთხოვნა შესრულდა.
+→ 4xx
+4xx — კლიენტის ბრალი. არასწორი მონაცემი გამოგზავნა, ან ითხოვს რაღაცას, რაც არ არსებობს.
+→ 5xx
+5xx — სერვერის ბრალი. ჩვენს კოდში რაღაც გატყდა.
+? Id = 99-ის წაშლა — ვისი ბრალია? (კლიენტის — არარსებულ პროდუქტს ითხოვს. ე.ი. 4xx უნდა ყოფილიყო, ჩვენ კი 2xx დავაბრუნეთ.)
+  </aside>
+</section>
+
+<!-- 9. CODES WE USE -->
+<section class="slide" data-section="1 · HTTP პასუხი">
+  <div class="kicker">ჩვენი ნაკრები</div>
+  <h2>7 კოდი, რომელიც <span class="grad">ყოველდღე</span> გვჭირდება</h2>
+  <div class="mrow step fade"><span class="c"><span class="stbadge" style="--a:var(--mvc)">200</span> OK</span><span class="tag" style="--a:var(--mvc)">GET</span><span class="w">მონაცემი მოიძებნა და ვაბრუნებთ</span></div>
+  <div class="mrow step fade" data-with><span class="c"><span class="stbadge" style="--a:var(--mvc)">201</span> Created</span><span class="tag" style="--a:var(--asp)">POST</span><span class="w">ახალი რესურსი შეიქმნა</span></div>
+  <div class="mrow step fade" data-with><span class="c"><span class="stbadge" style="--a:var(--mvc)">204</span> No Content</span><span class="tag" style="--a:var(--wf)">PUT · DELETE</span><span class="w">შესრულდა, body ცარიელია</span></div>
+  <div class="mrow step fade"><span class="c"><span class="stbadge" style="--a:var(--asp)">400</span> Bad Request</span><span class="tag" style="--a:var(--asp)">POST · PUT</span><span class="w">მონაცემი არასწორია: ცარიელი სახელი, უარყოფითი ფასი</span></div>
+  <div class="mrow step fade" data-with><span class="c"><span class="stbadge" style="--a:var(--asp)">404</span> Not Found</span><span class="tag" style="--a:var(--net)">{id}</span><span class="w">ასეთი არ არსებობს</span></div>
+  <div class="mrow step fade" data-with><span class="c"><span class="stbadge" style="--a:var(--asp)">409</span> Conflict</span><span class="tag" style="--a:var(--asp)">POST · PUT</span><span class="w">ეწინააღმდეგება არსებულს: ასეთი სახელი უკვე არის</span></div>
+  <div class="mrow step fade"><span class="c"><span class="stbadge" style="--a:var(--red)">500</span> Server Error</span><span class="tag" style="--a:var(--red)">ნებისმიერი</span><span class="w">კოდში exception — ამას <b>ჩვენ არ</b> ვაბრუნებთ, თვითონ ხდება</span></div>
+  <aside class="notes">
+⏱ 0:19 · 3 წთ
+ორმოცდაათზე მეტი კოდი არსებობს, მაგრამ ყოველდღიურად ეს შვიდი გვჭირდება. ~ REST-ის ცხრილი წინა ლექციიდან ნაწილობრივ ნაცნობია.
+→ 2xx
+წარმატების სამი კოდი: 200 — მონაცემს ვაბრუნებთ. 201 — ახალი რამ შეიქმნა. 204 — შესრულდა, მაგრამ სათქმელი არაფერი გვაქვს. ! 204-ს body არ აქვს.
+→ 4xx
+კლიენტის შეცდომები: 400 — მონაცემი არასწორია. 404 — ასეთი არ არსებობს. 409 — მონაცემი სწორია, მაგრამ არსებულს ეწინააღმდეგება, მაგალითად იგივე სახელით პროდუქტი უკვე გვაქვს.
+→ 500
+500 — სერვერის შეცდომა. ხელით არ ვაბრუნებთ: თუ კოდში exception მოხდა და არავინ დაიჭირა, ASP.NET Core თვითონ აბრუნებს 500-ს.
+  </aside>
+</section>
+
+<!-- ============ PART 2: IACTIONRESULT ============ -->
+<section class="slide divider" data-section="2 · IActionResult">
+  <div class="vcenter">
+    <div class="kicker in">ნაწილი 2</div>
+    <h1 class="in" style="--d:.1s"><span class="grad">IActionResult</span></h1>
+    <p class="lead mt in" style="--d:.3s">ერთი მეთოდი — სხვადასხვა პასუხი, თავისი სტატუსით</p>
+  </div>
+  <div class="big-num">02</div>
+  <aside class="notes">
+⏱ 0:22
+ახლა ვიცით, რა უნდა დავაბრუნოთ. ვნახოთ, როგორ.
+  </aside>
+</section>
+
+<!-- 11. THE C# PROBLEM -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">პრობლემა</div>
+  <h2>მეთოდს <span class="c-red">ერთი</span> return-ის ტიპი აქვს</h2>
+  <div class="grid2" style="grid-template-columns:1.25fr 1fr;align-items:start;gap:30px">
+    <code-block id="pr" lang="csharp" cls="sm" title="ProductsController.cs">
+[HttpGet("{id}")]
+public Product GetById(int id)
+{
+    var product = _products.FirstOrDefault(p => p.Id == id);
+    if (product is null)
+        return ???;   // 404 როგორ დავაბრუნოთ?
+
+    return product;
+}
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="pr" data-lines="2"></i>
+      <div class="callout step" data-with style="--a:var(--net)">მეთოდი გვპირდება: <b>„Product-ს დავაბრუნებ“</b></div>
+      <i class="codestep" data-for="pr" data-lines="5-6"></i>
+      <div class="callout step" data-with style="--a:var(--red)">404 <b>Product არ არის</b>. ტექსტიც არ არის Product</div>
+      <div class="callout step" style="--a:var(--asp)"><code class="i">object</code> ყველაფერს იღებს, მაგრამ <b>სტატუსს ვერ ვმართავთ</b> — ყოველთვის 200</div>
+      <div class="solve step">გვჭირდება ტიპი, რომელიც ნიშნავს <b>„ნებისმიერი HTTP პასუხი“</b></div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:22 · 3 წთ
+სცადოთ სწორად დავწეროთ GetById.
+→ return-ის ტიპი
+C#-ში მეთოდი წინასწარ ამბობს, რას აბრუნებს. აქ: Product.
+→ 404
+პროდუქტი ვერ ვიპოვეთ. 404 გვინდა. ? რა დავწეროთ return-ის შემდეგ? (404 Product არ არის — კომპილატორი არ გაგვიშვებს. ამიტომ დავწერეთ წინა ლექციაზე object.)
+→ object
+object ყველაფერს იღებს, მაგრამ ASP.NET Core-ს სტატუსს ვერ ვეუბნებით. რაც არ უნდა დავაბრუნოთ, 200 წავა.
+→ გამოსავალი
+! გვჭირდება ტიპი, რომელიც ნიშნავს: „ნებისმიერი HTTP პასუხი — თავისი სტატუსით და body-თი“. ასეთი ტიპი არსებობს.
+  </aside>
+</section>
+
+<!-- 12. IACTIONRESULT FAMILY -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">ASP.NET Core</div>
+  <h2><code class="i" style="font-size:.85em">IActionResult</code> — <span class="grad">„ნებისმიერი პასუხი“</span></h2>
+  <div class="grid2" style="grid-template-columns:1.35fr 1fr;align-items:center;gap:30px">
+    <svg viewBox="0 0 860 470" width="860" height="470">
+      <g class="in" style="--d:.1s"><rect x="210" y="10" width="440" height="84" rx="18" fill="#e6f6f4" stroke="#0d9488" stroke-width="3"/><text x="430" y="48" text-anchor="middle" class="tp b mono" font-size="24">IActionResult</text><text x="430" y="76" text-anchor="middle" class="tm" font-size="15">interface · „ვიცი, როგორ გავხდე HTTP პასუხი“</text></g>
+      <g class="step">
+        <path class="draw" d="M360 94 C 300 160, 170 170, 110 250" stroke="#16a34a" stroke-width="3" fill="none"/>
+        <path class="draw" d="M395 94 C 340 170, 272 180, 272 250 L 272 370" stroke="#16a34a" stroke-width="3" fill="none"/>
+        <path class="draw" d="M430 94 V 250" stroke="#16a34a" stroke-width="3" fill="none"/>
+        <rect x="10" y="250" width="200" height="86" rx="14" fill="#eaf8ef" stroke="#16a34a" stroke-width="2.5"/><text x="110" y="284" text-anchor="middle" class="tg b mono" font-size="17">OkObjectResult</text><text x="110" y="316" text-anchor="middle" class="tw b mono" font-size="22">200</text>
+        <rect x="190" y="370" width="210" height="86" rx="14" fill="#eaf8ef" stroke="#16a34a" stroke-width="2.5"/><text x="295" y="404" text-anchor="middle" class="tg b mono" font-size="15">CreatedAtActionResult</text><text x="295" y="436" text-anchor="middle" class="tw b mono" font-size="22">201</text>
+        <rect x="335" y="250" width="190" height="86" rx="14" fill="#eaf8ef" stroke="#16a34a" stroke-width="2.5"/><text x="430" y="284" text-anchor="middle" class="tg b mono" font-size="17">NoContentResult</text><text x="430" y="316" text-anchor="middle" class="tw b mono" font-size="22">204</text>
+      </g>
+      <g class="step">
+        <path class="draw" d="M470 94 C 520 170, 600 180, 640 250" stroke="#d97706" stroke-width="3" fill="none"/>
+        <path class="draw" d="M520 94 C 640 150, 795 170, 795 370" stroke="#d97706" stroke-width="3" fill="none"/>
+        <rect x="545" y="250" width="200" height="86" rx="14" fill="#fef5e4" stroke="#d97706" stroke-width="2.5"/><text x="645" y="284" text-anchor="middle" class="to b mono" font-size="16">NotFoundResult</text><text x="645" y="316" text-anchor="middle" class="tw b mono" font-size="22">404</text>
+        <rect x="560" y="370" width="290" height="86" rx="14" fill="#fef5e4" stroke="#d97706" stroke-width="2.5"/><text x="705" y="404" text-anchor="middle" class="to b mono" font-size="15">BadRequestObjectResult</text><text x="705" y="436" text-anchor="middle" class="tw b mono" font-size="22">400</text>
+      </g>
+    </svg>
+    <div class="col" style="gap:18px">
+      <div class="callout step" style="--a:var(--core)"><b>interface</b> — შეთანხმება. ყველა ეს კლასი ერთს „გვპირდება“: იცის, როგორ გადაიქცეს HTTP პასუხად</div>
+      <div class="solve step"><code class="i">public IActionResult GetById(...)</code> — ახლა <b>ნებისმიერი</b> მათგანი შეგვიძლია დავაბრუნოთ</div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:25 · 3 წთ
+ASP.NET Core-ს აქვს interface IActionResult. Action — Controller-ის მეთოდი, Result — მისი შედეგი. „Action-ის შედეგი“.
+→ 2xx
+მას ბევრი კლასი ახორციელებს. წარმატების: OkObjectResult — 200, CreatedAtActionResult — 201, NoContentResult — 204.
+→ 4xx
+შეცდომის: NotFoundResult — 404, BadRequestObjectResult — 400. და კიდევ ბევრი.
+→ interface
+! interface ჰგავს შეთანხმებას: „ვინც მე მახორციელებს, იცის, როგორ გადაიქცეს HTTP პასუხად — რა სტატუსით და რა body-თი“.
+→ შედეგი
+ამიტომ, თუ მეთოდი IActionResult-ს აბრუნებს, მისგან ნებისმიერი ამ კლასის ობიექტი შეგვიძლია დავაბრუნოთ. ერთ if-ში — 404, მეორეში — 200.
+~ კლასების სახელების დამახსოვრება არ არის საჭირო — შემდეგ სლაიდზე ვნახავთ, რომ მათ პირდაპირ თითქმის არასდროს ვქმნით.
+  </aside>
+</section>
+
+<!-- 13. CONTROLLERBASE HELPERS -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">ControllerBase</div>
+  <h2>მზა მეთოდები — <span class="grad">ერთი სიტყვით</span></h2>
+  <div class="grid3" style="gap:22px">
+    <div class="method-card mc step" style="--a:var(--mvc)"><span class="m">Ok(data)</span><span class="t"><b>200</b> · მონაცემით</span></div>
+    <div class="method-card mc step" data-with style="--a:var(--mvc)"><span class="m">CreatedAtAction</span><span class="t"><b>201</b> · + Location</span></div>
+    <div class="method-card mc step" data-with style="--a:var(--mvc)"><span class="m">NoContent()</span><span class="t"><b>204</b> · body-ს გარეშე</span></div>
+    <div class="method-card mc step" style="--a:var(--asp)"><span class="m">BadRequest(msg)</span><span class="t"><b>400</b></span></div>
+    <div class="method-card mc step" data-with style="--a:var(--asp)"><span class="m">NotFound()</span><span class="t"><b>404</b></span></div>
+    <div class="method-card mc step" data-with style="--a:var(--asp)"><span class="m">Conflict(msg)</span><span class="t"><b>409</b></span></div>
+  </div>
+  <div class="grid2 mt2" style="gap:26px;align-items:center">
+    <div class="method-card mc step" style="--a:var(--net)"><span class="m">StatusCode(418)</span><span class="t">ნებისმიერი კოდი, თუ მზა მეთოდი არ არსებობს</span></div>
+    <div class="callout step" style="--a:var(--core)">ყველა ეს მეთოდი <b>ControllerBase</b>-იდან მოდის — ამიტომ ვაშენებთ Controller-ს მასზე</div>
+  </div>
+  <aside class="notes">
+⏱ 0:28 · 3 წთ
+new OkObjectResult(...)-ს არავინ წერს. ControllerBase-ს თითოეულისთვის მზა მეთოდი აქვს.
+→ 2xx
+Ok(data) — 200 და მონაცემი body-ში. CreatedAtAction — 201 და ახალი რესურსის მისამართი. NoContent — 204, body ცარიელი.
+→ 4xx
+BadRequest — 400, ფრჩხილებში შეგვიძლია შეტყობინება ჩავწეროთ. NotFound — 404. Conflict — 409.
+→ StatusCode
+თუ მზა მეთოდი არ არსებობს — StatusCode(ნებისმიერი რიცხვი). ~ 418 „I'm a teapot“ — ხუმრობით შექმნილი ნამდვილი კოდია, შეგიძლია გაახსენო.
+→ ControllerBase
+! გაიხსენეთ: Controller-ს ვაშენებთ ControllerBase-ზე. ეს მეთოდები სწორედ იქიდან მოდის. ამიტომ Controller-ში ისინი პირდაპირ ხელმისაწვდომია.
+  </aside>
+</section>
+
+<!-- 14. UNDER THE HOOD -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">კაპოტის ქვეშ</div>
+  <h2><code class="i" style="font-size:.85em">return Ok(product)</code> — რა ხდება შემდეგ?</h2>
+  <div class="flowrow mt2" style="gap:12px">
+    <div class="fbox step" style="--a:var(--net)"><div class="e">🧑‍💻</div><div class="l">ჩვენი Action</div><div class="s">return Ok(product);</div></div>
+    <div class="farrow step" data-with style="--a:var(--net)"><span class="ar">→</span>ქმნის</div>
+    <div class="fbox step" style="--a:var(--mvc)"><div class="e">📦</div><div class="l">OkObjectResult</div><div class="s">Status = 200 · Value = product</div></div>
+    <div class="farrow step" data-with style="--a:var(--mvc)"><span class="ar">→</span>გადასცემს</div>
+    <div class="fbox step" style="--a:var(--core)"><div class="e">⚙️</div><div class="l">ASP.NET Core</div><div class="s">სტატუსს წერს · product → JSON</div></div>
+    <div class="farrow step" style="--a:var(--api)"><span class="ar">→</span>აგზავნის</div>
+    <div class="fbox step" data-with style="--a:var(--api)"><div class="e">📨</div><div class="l">HTTP პასუხი</div><div class="s">200 OK + {"id":1,…}</div></div>
+  </div>
+  <div class="callout mt2 step" style="--a:var(--mvc)">ჩვენ <b>ვწყვეტთ</b>, რა პასუხი იყოს. HTTP-ს და JSON-ს ASP.NET Core <b>თვითონ</b> წერს</div>
+  <aside class="notes">
+⏱ 0:31 · 2 წთ
+→ Action
+Action-ში ვწერთ return Ok(product).
+→ ობიექტი
+Ok() უბრალოდ ქმნის ობიექტს: OkObjectResult. მასში ორი რამ წერია — სტატუსი 200 და მონაცემი.
+→ Framework
+ამ ობიექტს ASP.NET Core იღებს: სტატუსს წერს პასუხში, product-ს JSON-ად აქცევს.
+→ პასუხი
+და კლიენტთან მიდის მზა HTTP პასუხი.
+→ დასკვნა
+! ჩვენი საქმე მხოლოდ გადაწყვეტილებაა: რა სტატუსი და რა მონაცემი. დანარჩენს framework აკეთებს.
+  </aside>
+</section>
+
+<!-- 15. GETALL + GETBYID -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">🧑‍💻 ვწერთ · Visual Studio</div>
+  <h2><span class="c-mvc">GET</span> — 200 ან 404</h2>
+  <div class="grid2" style="grid-template-columns:1.3fr 1fr;align-items:start;gap:30px">
+    <code-block id="g" lang="csharp" cls="sm" title="Controllers/ProductsController.cs">
+[HttpGet]
+public IActionResult GetAll()
+{
+    return Ok(_products);
+}
+
+[HttpGet("{id}")]
+public IActionResult GetById(int id)
+{
+    var product = _products.FirstOrDefault(p => p.Id == id);
+    if (product is null)
+        return NotFound();
+
+    return Ok(product);
+}
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="g" data-lines="2,4"></i>
+      <div class="callout step" data-with style="--a:var(--net)"><code class="i">List&lt;Product&gt;</code> → <code class="i">IActionResult</code>, სია — <code class="i">Ok()</code>-ში</div>
+      <i class="codestep" data-for="g" data-lines="8,11-12"></i>
+      <div class="callout step" data-with style="--a:var(--asp)">ვერ ვიპოვეთ → <code class="i">NotFound()</code> · <b>404</b></div>
+      <i class="codestep" data-for="g" data-lines="14"></i>
+      <div class="callout step" data-with style="--a:var(--mvc)">ვიპოვეთ → <code class="i">Ok(product)</code> · <b>200</b></div>
+      <div class="solve step"><code class="i">object</code> აღარ გვჭირდება — ტიპი <b>სიმართლეს ამბობს</b></div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:33 · 4 წთ
+~ აქედან Visual Studio-ში წერ, სლაიდი კი ეკრანზე რჩება ნიმუშად. წინა ლექციის ShopApi გახსენი.
+→ GetAll
+GetAll: დაბრუნების ტიპს ვცვლით IActionResult-ით, სიას Ok()-ში ვსვამთ. შედეგი იგივეა — 200 და სია. მაგრამ ახლა სტატუსს ჩვენ ვირჩევთ.
+→ NotFound
+GetById: თუ ვერ ვიპოვეთ — return NotFound(). ეს 404-ია.
+→ Ok
+თუ ვიპოვეთ — Ok(product), 200.
+→ შედეგი
+! object აღარ გვჭირდება. ორი return, ორი სხვადასხვა სტატუსი, ერთი ტიპი.
+~ გაუშვი და Swagger-ში ორივე Id სცადე — შემდეგი სლაიდი ზუსტად ამას აჩვენებს.
+  </aside>
+</section>
+
+<!-- 16. 404 IN SWAGGER -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">Swagger · შედეგი</div>
+  <h2>404 და <span class="grad">ProblemDetails</span></h2>
+  <div class="grid2" style="gap:34px;align-items:start">
+    <div class="swr step left" style="--c:#61affe">
+      <div class="rh"><span class="m">GET</span><span class="p">/api/products/99</span></div>
+      <div class="lab"><span>Code</span><span>Response body</span></div>
+      <div class="rr"><span class="sc bad">404</span><pre class="rb">{
+  <span class="k">"type"</span>: <span class="s">"https://tools.ietf.org/</span>
+<span class="s">           html/rfc9110#section-15.5.5"</span>,
+  <span class="k">"title"</span>: <span class="s">"Not Found"</span>,
+  <span class="k">"status"</span>: <span class="n">404</span>,
+  <span class="k">"traceId"</span>: <span class="s">"00-4bf9…-01"</span>
+}</pre></div>
+    </div>
+    <div class="col" style="gap:18px">
+      <div class="callout step" style="--a:var(--core)"><b>ProblemDetails</b> — შეცდომის <b>სტანდარტული</b> JSON ფორმა. <code class="i">[ApiController]</code> მას თვითონ ავსებს</div>
+      <div class="card accent step" style="--a:var(--asp)">
+        <h3><span class="ico">💬</span>შეტყობინება ადამიანისთვის</h3>
+        <code-block lang="csharp" cls="xs">
+return NotFound("პროდუქტი ვერ მოიძებნა");
+        </code-block>
+        <p class="small" style="margin-top:10px">სტატუსი — <b>404</b>, body — ტექსტი. პროგრამაც და ადამიანიც კმაყოფილია</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:37 · 3 წთ
+→ Swagger
+Swagger-ში Id = 99: სტატუსი 404. და body-ში JSON გამოჩნდა, რომელიც ჩვენ არ დაგვიწერია.
+→ ProblemDetails
+ეს ProblemDetails-ია — შეცდომის აღწერის სტანდარტული ფორმა: type, title, status. [ApiController]-ს ცარიელ NotFound()-ზე თვითონ ავსებს. ! ყველა ASP.NET Core API შეცდომას ერთნაირი ფორმით აბრუნებს, frontend-ს ერთი ფორმის წაკითხვა უწევს.
+~ traceId — მოთხოვნის უნიკალური ნომერი, ლოგებში ძებნისთვის. დეტალებში ნუ შეხვალ.
+→ ტექსტით
+თუ ადამიანისთვის ტექსტიც გვინდა — ფრჩხილებში ჩავწერთ. ! განსხვავება წინა ლექციასთან: ტექსტი იგივეა, მაგრამ სტატუსი ახლა 404-ია და არა 200.
+  </aside>
+</section>
+
+<!-- 17. POST 201 -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">🧑‍💻 ვწერთ</div>
+  <h2><span class="c-asp">POST</span> — 201 Created</h2>
+  <div class="grid2" style="grid-template-columns:1.25fr 1fr;align-items:start;gap:30px">
+    <code-block id="c" lang="csharp" cls="sm" title="Controllers/ProductsController.cs">
+[HttpPost]
+public IActionResult Create(Product product)
+{
+    product.Id = _nextId++;
+    _products.Add(product);
+
+    return CreatedAtAction(
+        nameof(GetById),         // ვინ პოულობს ერთს
+        new { id = product.Id }, // მისი პარამეტრი
+        product);                // body
+}
+    </code-block>
+    <div class="col" style="gap:14px">
+      <i class="codestep" data-for="c" data-lines="7-8"></i>
+      <div class="callout step" data-with style="--a:var(--net)">რომელი endpoint აბრუნებს <b>ერთ</b> პროდუქტს? — <code class="i">GetById</code></div>
+      <i class="codestep" data-for="c" data-lines="9"></i>
+      <div class="callout step" data-with style="--a:var(--api)">მისამართის შესავსებად — <code class="i">id = 4</code></div>
+      <i class="codestep" data-for="c" data-lines="10"></i>
+      <div class="callout step" data-with style="--a:var(--asp)">body-ში — თვითონ ახალი პროდუქტი</div>
+      <div class="swr step" style="--c:#49cc90">
+        <div class="lab" style="padding-top:12px"><span>Code</span><span>Response headers</span></div>
+        <div class="rr"><span class="sc" style="color:#16a34a">201</span><div class="hdr">content-type: application/json<br><span class="ring" style="box-shadow:0 0 0 3px #16a34a"><b>location: https://localhost:7001/api/products/4</b></span></div></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:40 · 4 წთ
+POST-ზე REST-ის წესი: 201 Created და ახალი რესურსის მისამართი. ამისთვის CreatedAtAction გვაქვს. სამ რამეს იღებს.
+→ nameof(GetById)
+პირველი: რომელი endpoint-ით შეიძლება ახალი პროდუქტის ნახვა? GetById-ით. nameof სახელს ტექსტად აქცევს — თუ მეთოდს გადავარქმევთ, კომპილატორი შეგვახსენებს.
+→ id
+მეორე: GetById-ს id სჭირდება. ვაძლევთ ახალ Id-ს. ASP.NET Core ამით აწყობს მისამართს: /api/products/4.
+→ body
+მესამე: რა ჩავდოთ body-ში — ახალი პროდუქტი, უკვე Id-ით.
+→ Swagger
+Swagger-ში: 201 და Response headers-ში location. ! frontend-მა ზუსტად იცის, სად იპოვოს ახლად შექმნილი პროდუქტი.
+? Ok(product)-იც ხომ იმუშავებდა? (იმუშავებდა, მაგრამ 200-ით. REST ამბობს: შექმნა — 201.)
+  </aside>
+</section>
+
+<!-- 18. PUT + DELETE -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">🧑‍💻 ვწერთ</div>
+  <h2><span class="c-wf">PUT</span> და <span class="c-red">DELETE</span> — 204 ან 404</h2>
+  <div class="grid2" style="gap:26px;align-items:start">
+    <code-block id="u" lang="csharp" cls="xs" title="Update">
+[HttpPut("{id}")]
+public IActionResult Update(int id, Product updated)
+{
+    var product = _products.FirstOrDefault(p => p.Id == id);
+    if (product is null)
+        return NotFound();
+
+    product.Name = updated.Name;
+    product.Price = updated.Price;
+    return NoContent();
+}
+    </code-block>
+    <code-block id="d" lang="csharp" cls="xs" title="Delete">
+[HttpDelete("{id}")]
+public IActionResult Delete(int id)
+{
+    var product = _products.FirstOrDefault(p => p.Id == id);
+    if (product is null)
+        return NotFound();
+
+    _products.Remove(product);
+    return NoContent();
+}
+    </code-block>
+  </div>
+  <i class="codestep" data-for="u" data-lines="5-6"></i>
+  <i class="codestep" data-for="u" data-lines="8-10"></i>
+  <i class="codestep" data-for="d" data-lines="5-6,8-9"></i>
+  <div class="callout mt step" style="--a:var(--mvc)"><b>204</b> = „გაკეთდა, სათქმელი არაფერი მაქვს“. ტექსტი „წაიშალა“ აღარ გვჭირდება — <b>სტატუსი ამბობს</b></div>
+  <aside class="notes">
+⏱ 0:44 · 3 წთ
+→ Update · 404
+Update: პირველი — ვეძებთ. თუ არ არსებობს, 404.
+→ Update · 204
+თუ არსებობს — ვცვლით და ვაბრუნებთ NoContent. 204.
+→ Delete
+Delete იგივე სქემაა: არ არის — 404, წავშალეთ — 204.
+→ 204
+? რატომ არ ვაბრუნებთ ტექსტს „წაიშალა“? (სტატუსი 204 უკვე ამბობს: შესრულდა. body ზედმეტია.)
+~ PUT-ზე ზოგი API 200-ს და განახლებულ ობიექტს აბრუნებს — ესეც დასაშვებია. ჩვენ 204-ს ვიყენებთ, როგორც წინა ლექციის REST-ის ცხრილში.
+  </aside>
+</section>
+
+<!-- 19. BADREQUEST + CONFLICT -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">🧑‍💻 ვწერთ · ვალიდაცია</div>
+  <h2><span class="c-asp">400</span> და <span class="c-asp">409</span> — როცა კლიენტი ცდება</h2>
+  <div class="grid2" style="grid-template-columns:1.3fr 1fr;align-items:start;gap:30px">
+    <code-block id="v" lang="csharp" cls="sm" title="Controllers/ProductsController.cs">
+[HttpPost]
+public IActionResult Create(Product product)
+{
+    if (string.IsNullOrWhiteSpace(product.Name))
+        return BadRequest("სახელი სავალდებულოა");
+
+    if (product.Price <= 0)
+        return BadRequest("ფასი 0-ზე მეტი უნდა იყოს");
+
+    if (_products.Any(p => p.Name == product.Name))
+        return Conflict("ასეთი პროდუქტი უკვე არსებობს");
+
+    product.Id = _nextId++;
+    _products.Add(product);
+    return CreatedAtAction(nameof(GetById),
+        new { id = product.Id }, product);
+}
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="v" data-lines="4-8"></i>
+      <div class="callout step" data-with style="--a:var(--asp)">მონაცემი <b>არასწორია</b> → 400. ტექსტი ეუბნება, <b>რა</b> გაასწოროს</div>
+      <i class="codestep" data-for="v" data-lines="10-11"></i>
+      <div class="callout step" data-with style="--a:var(--asp)">მონაცემი სწორია, მაგრამ <b>არსებულს ეჯახება</b> → 409</div>
+      <i class="codestep" data-for="v" data-lines="13-16"></i>
+      <div class="callout step" data-with style="--a:var(--mvc)">ყველა შემოწმება გაიარა → 201</div>
+      <div class="callout step" style="--a:var(--net)">ერთ მეთოდში <b>რამდენიც გინდა</b> return — თითოეული თავისი სტატუსით</div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:47 · 4 წთ
+ახლა Create გავაძლიეროთ. ! ნებისმიერ მონაცემს, რომელიც კლიენტისგან მოდის, ვამოწმებთ.
+→ 400
+ცარიელი სახელი, ფასი ნული ან უარყოფითი — BadRequest, 400. ტექსტში ვწერთ, რა არის არასწორი, რომ frontend-მა მომხმარებელს აჩვენოს.
+→ 409
+მესამე შემთხვევა სხვაა: მონაცემი თავისთავად სწორია, მაგრამ ასეთი სახელით პროდუქტი უკვე გვაქვს. ეს კონფლიქტია — 409.
+? 400-სა და 409-ს შორის რა განსხვავებაა? (400 — მონაცემი თვითონ არასწორია. 409 — სწორია, მაგრამ არსებულ მდგომარეობას ეწინააღმდეგება.)
+→ 201
+თუ ყველაფერი გაიარა — ვქმნით და 201.
+→ წესი
+ერთ მეთოდში რამდენიც გინდა return. ~ Swagger-ში სამივე შეცდომა აჩვენე: ცარიელი name, price = 0, და არსებული სახელი „მაუსი“.
+~ ეს if-ები DTO-ს ნაწილში უფრო ლამაზად შეიცვლება — ცოტა ხანში.
+  </aside>
+</section>
+
+<!-- 20. BEFORE / AFTER -->
+<section class="slide" data-section="2 · IActionResult">
+  <div class="kicker">იყო → გახდა</div>
+  <h2>სტატუსი ახლა <span class="grad">სიმართლეს ამბობს</span></h2>
+  <table class="t">
+    <tr><th>მოთხოვნა</th><th>შემთხვევა</th><th>ადრე</th><th>ახლა</th></tr>
+    <tr class="step fade"><td class="mono">GET /api/products/1</td><td>არსებობს</td><td><span class="new">200</span></td><td><span class="new">200</span> · პროდუქტი</td></tr>
+    <tr class="step fade" data-with><td class="mono">GET /api/products/99</td><td>არ არსებობს</td><td><span class="old">200</span> · „ვერ მოიძებნა“</td><td><span class="new">404</span> · ProblemDetails</td></tr>
+    <tr class="step fade"><td class="mono">POST /api/products</td><td>სწორი მონაცემი</td><td><span class="old">200</span></td><td><span class="new">201</span> · + Location</td></tr>
+    <tr class="step fade" data-with><td class="mono">POST /api/products</td><td>ცარიელი სახელი</td><td><span class="old">200</span> · შეინახა 😬</td><td><span class="new">400</span> · რა გაასწოროს</td></tr>
+    <tr class="step fade"><td class="mono">DELETE /api/products/2</td><td>წაიშალა</td><td><span class="old">200</span> · „წაიშალა“</td><td><span class="new">204</span></td></tr>
+    <tr class="step fade" data-with><td class="mono">DELETE /api/products/99</td><td>არ არსებობს</td><td><span class="old">200</span> · „ვერ მოიძებნა“</td><td><span class="new">404</span></td></tr>
+  </table>
+  <aside class="notes">
+⏱ 0:51 · 2 წთ
+შევაჯამოთ, რა შეიცვალა.
+→ GET
+GET-ზე: არსებული — ისევ 200, არარსებული — ახლა 404.
+→ POST
+POST-ზე: 201 მისამართით. და ცარიელი სახელი ადრე უბრალოდ ინახებოდა! ახლა — 400.
+→ DELETE
+DELETE: 204 ან 404.
+! ყველაზე ცუდი იყო ის, რომ ადრე ყველაფერი 200 იყო. ახლა frontend-ს შეუძლია სტატუსით გადაწყვიტოს, რა აჩვენოს.
+  </aside>
+</section>
+
+<!-- ============ PART 3: ACTIONRESULT<T> ============ -->
+<!-- 21. IACTIONRESULT FLAW -->
+<section class="slide" data-section="3 · ActionResult&lt;T&gt;">
+  <div class="kicker">ერთი ნაკლი</div>
+  <h2>Swagger-მა აღარ იცის, <span class="c-red">რა მოვა</span></h2>
+  <div class="grid2" style="gap:40px;align-items:start">
+    <div class="col" style="gap:12px">
+      <div class="tag step" style="--a:var(--red);align-self:flex-start">ახლა · IActionResult</div>
+      <div class="swr step" data-with style="--c:#61affe">
+        <div class="rh"><span class="m">GET</span><span class="p">/api/products/{id}</span></div>
+        <div class="lab"><span>Code</span><span>Description</span></div>
+        <div class="rr"><span class="sc">200</span><div><div class="hdr">OK</div><div class="hdr" style="color:var(--muted);font-style:italic">No schema · მაგალითი არ არის</div></div></div>
+      </div>
+    </div>
+    <div class="col" style="gap:12px">
+      <div class="tag step" style="--a:var(--mvc);align-self:flex-start">ადრე · Product</div>
+      <div class="swr step" data-with style="--c:#61affe">
+        <div class="rh"><span class="m">GET</span><span class="p">/api/products/{id}</span></div>
+        <div class="lab"><span>Code</span><span>Example Value · Schema</span></div>
+        <div class="rr"><span class="sc">200</span><pre class="rb">{
+  <span class="k">"id"</span>: <span class="n">0</span>,
+  <span class="k">"name"</span>: <span class="s">"string"</span>,
+  <span class="k">"price"</span>: <span class="n">0</span>
+}</pre></div>
+      </div>
+    </div>
+  </div>
+  <div class="problem mt step"><code class="i">IActionResult</code> — „რაღაც პასუხი“. <b>რა</b> დევს <code class="i">Ok()</code>-ში, Swagger-ისთვის უცნობია</div>
+  <aside class="notes">
+⏱ 0:53 · 2 წთ
+IActionResult-მა ერთი რამ წაგვართვა.
+→ ახლა
+Swagger-ში გახსენით GET /api/products/{id}. 200 — და სულ ესაა. სქემა არ არის.
+→ ადრე
+ადრე, როცა მეთოდი Product-ს აბრუნებდა, Swagger-ი ზუსტ ფორმას გვიჩვენებდა: id, name, price.
+→ პრობლემა
+! IActionResult ნიშნავს „რაღაც პასუხს“. Ok()-ში რა ჩავდეთ, ამას მხოლოდ მეთოდის შიგნით ვხედავთ — Swagger-ი კი მეთოდის ტიპს კითხულობს. frontend-ის დეველოპერი ვეღარ გაიგებს, რა მოვა.
+  </aside>
+</section>
+
+<!-- 22. ACTIONRESULT<T> -->
+<section class="slide" data-section="3 · ActionResult&lt;T&gt;">
+  <div class="kicker">🧑‍💻 ვწერთ</div>
+  <h2><code class="i" style="font-size:.85em">ActionResult&lt;T&gt;</code> — <span class="grad">ორივე ერთად</span></h2>
+  <div class="grid2" style="grid-template-columns:1.25fr 1fr;align-items:start;gap:30px">
+    <code-block id="t" lang="csharp" cls="sm" title="Controllers/ProductsController.cs">
+[HttpGet]
+public ActionResult<List<Product>> GetAll()
+{
+    return _products;            // = Ok(_products)
+}
+
+[HttpGet("{id}")]
+public ActionResult<Product> GetById(int id)
+{
+    var product = _products.FirstOrDefault(p => p.Id == id);
+    if (product is null)
+        return NotFound();
+
+    return product;              // = Ok(product)
+}
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="t" data-lines="8"></i>
+      <div class="callout step" data-with style="--a:var(--core)"><code class="i">&lt;Product&gt;</code> — Swagger-ს ეუბნება: წარმატებისას <b>Product</b> მოვა</div>
+      <i class="codestep" data-for="t" data-lines="11-12"></i>
+      <div class="callout step" data-with style="--a:var(--asp)"><code class="i">NotFound()</code> ისევ მუშაობს</div>
+      <i class="codestep" data-for="t" data-lines="14"></i>
+      <div class="callout step" data-with style="--a:var(--mvc)">Product <b>პირდაპირ</b> → ავტომატურად <b>200 OK</b></div>
+      <i class="codestep" data-for="t" data-lines="2,4"></i>
+      <div class="callout step" data-with style="--a:var(--net)">სიაც იგივე წესით: <code class="i">ActionResult&lt;List&lt;Product&gt;&gt;</code></div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 0:55 · 3 წთ
+გამოსავალი — ActionResult, ოღონდ კუთხის ფრჩხილებით: ActionResult&lt;Product&gt;.
+→ T
+ფრჩხილებში ვწერთ, რა მოვა წარმატებისას. Swagger-ი ამას კითხულობს და სქემა ბრუნდება.
+→ NotFound
+შეცდომებისთვის ყველაფერი ძველებურად: NotFound(), BadRequest().
+→ პირდაპირ
+და ახალი: წარმატებისას შეგვიძლია Product პირდაპირ დავაბრუნოთ, Ok()-ის გარეშე. ASP.NET Core თვითონ შეფუთავს 200-ში. Ok(product) დაწერაც შეიძლება — შედეგი იგივეა.
+→ GetAll
+სია — ActionResult&lt;List&lt;Product&gt;&gt;.
+~ თუ ვინმე IEnumerable&lt;Product&gt;-ს დაწერს და return _products-ზე შეცდომა ამოუვა: C# interface-ზე ავტომატურ გადაყვანას არ აკეთებს. გამოსავალი — List ან Ok(...).
+~ Swagger-ში აჩვენე: სქემა დაბრუნდა.
+  </aside>
+</section>
+
+<!-- 23. WHICH WHEN -->
+<section class="slide" data-section="3 · ActionResult&lt;T&gt;">
+  <div class="kicker">წესი</div>
+  <h2>რომელი <span class="grad">როდის</span></h2>
+  <div class="grid2" style="gap:30px">
+    <div class="card accent step left" style="--a:var(--mvc)">
+      <h3><span class="ico">📦</span><code class="i">ActionResult&lt;T&gt;</code></h3>
+      <p class="small">წარმატებისას <b>body-ში მონაცემი</b> მიდის</p>
+      <div class="mini mt" style="margin-top:16px"><span class="chip">GET → 200</span><span class="chip">POST → 201</span></div>
+    </div>
+    <div class="card accent step right" style="--a:var(--core)">
+      <h3><span class="ico">📭</span><code class="i">IActionResult</code></h3>
+      <p class="small">body <b>არ</b> გვაქვს — მხოლოდ სტატუსი</p>
+      <div class="mini mt" style="margin-top:16px"><span class="chip">PUT → 204</span><span class="chip">DELETE → 204</span></div>
+    </div>
+  </div>
+  <div class="callout mt2 step" style="--a:var(--net)">სურვილისამებრ: <code class="i">[ProducesResponseType(StatusCodes.Status404NotFound)]</code> — Swagger-ში 404-იც გამოჩნდება</div>
+  <aside class="notes">
+⏱ 0:58 · 2 წთ
+მარტივი წესი.
+→ ActionResult&lt;T&gt;
+თუ წარმატებისას მონაცემს ვაბრუნებთ — GET, POST — ActionResult&lt;T&gt;.
+→ IActionResult
+თუ body არ გვაქვს — PUT და DELETE, 204 — IActionResult საკმარისია. T-ში ჩასაწერი არაფერია.
+→ ProducesResponseType
+~ სურვილისამებრ: ატრიბუტით Swagger-ს დანარჩენ სტატუსებზეც ვეუბნებით. დავალებაში ბონუსად.
+შემდეგ ნაწილზე გადასვლამდე — შესვენება.
+  </aside>
+</section>
+
+<!-- 24. BREAK -->
+<section class="slide divider" data-section="შესვენება">
+  <div class="vcenter">
+    <div class="kicker in">შესვენება</div>
+    <h1 class="in" style="--d:.1s">10 <span class="grad">წუთი</span> ☕</h1>
+    <p class="lead mt in" style="--d:.3s">შემდეგ — მეორე დიდი თემა: <b>რა ფორმის</b> მონაცემს ვიღებთ და ვაბრუნებთ</p>
+  </div>
+  <div class="big-num">☕</div>
+  <aside class="notes">
+⏱ 1:00 · 10 წთ
+~ შესვენების წინ: ვისაც ShopApi არ ეშვება, ახლა მოგიახლოვდეს.
+  </aside>
+</section>
+
+<!-- ============ PART 4: DTO ============ -->
+<section class="slide divider" data-section="4 · DTO">
+  <div class="vcenter">
+    <div class="kicker in">ნაწილი 4</div>
+    <h1 class="in" style="--d:.1s"><span class="grad">DTO</span></h1>
+    <p class="lead mt in" style="--d:.3s">რას ვიღებთ კლიენტისგან და რას ვაჩვენებთ მას</p>
+  </div>
+  <div class="big-num">04</div>
+  <aside class="notes">
+⏱ 1:10
+სტატუსი უკვე სწორია. ახლა body-ს შევხედოთ — რას ვიღებთ და რას ვაბრუნებთ. აქ სამი პრობლემაა.
+  </aside>
+</section>
+
+<!-- 26. PROBLEM 1: ID IN REQUEST -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">პრობლემა 1</div>
+  <h2>Swagger კლიენტს <span class="c-red">Id-ს სთხოვს</span></h2>
+  <div class="grid2" style="grid-template-columns:1fr 1.1fr;gap:40px;align-items:start">
+    <div class="swr step left" style="--c:#49cc90">
+      <div class="rh"><span class="m">POST</span><span class="p">/api/products</span></div>
+      <div class="lab"><span>Request body · Example Value</span></div>
+      <div style="padding:6px 16px 16px"><pre class="rb">{
+  <span class="leak"><span class="k">"id"</span>: <span class="n">0</span></span>,
+  <span class="k">"name"</span>: <span class="s">"string"</span>,
+  <span class="k">"price"</span>: <span class="n">0</span>
+}</pre></div>
+    </div>
+    <div class="col" style="gap:18px">
+      <div class="callout step" style="--a:var(--red)">Id-ს <b>ჩვენ</b> ვანიჭებთ (<code class="i">_nextId++</code>). კლიენტის Id <b>იკარგება</b> — მაშ, რატომ ვთხოვთ?</div>
+      <div class="callout step" style="--a:var(--asp)"><b>PUT</b>-ში Id <b>ორჯერაა</b>: მისამართში <code class="i">/products/2</code> და body-ში <code class="i">"id": 5</code>. რომელს დავუჯეროთ?</div>
+      <div class="problem step">ერთი <code class="i">Product</code> ვერ აღწერს <b>ყველა</b> მოთხოვნას</div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 1:10 · 2 წთ
+→ Swagger
+POST-ის მაგალითი Swagger-ში. ! შეხედეთ პირველ ველს: id.
+→ Id
+Id-ს კლიენტი არ უნდა გვიგზავნიდეს — ჩვენ ვანიჭებთ. ის რაც არ უნდა გამოგზავნოს, გადავაწერთ. კონტრაქტი იტყუება: „Id გამომიგზავნე“.
+→ PUT
+PUT-ში უარესია: Id მისამართშიც არის და body-შიც. ? თუ განსხვავდება — რომელს დავუჯეროთ? (მისამართს. body-ში Id ზედმეტია.)
+→ დასკვნა
+პრობლემის მიზეზი: Product ერთი კლასია, მოთხოვნები კი სხვადასხვა.
+  </aside>
+</section>
+
+<!-- 27. PROBLEM 2: LEAK -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">პრობლემა 2</div>
+  <h2>Product იზრდება — <span class="c-red">საიდუმლო გაიპარა</span></h2>
+  <div class="grid2" style="grid-template-columns:1.1fr 1fr;gap:34px;align-items:start">
+    <code-block id="pm" lang="csharp" cls="sm" title="Models/Product.cs">
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+    public decimal CostPrice { get; set; } // შესყიდვის ფასი
+    public DateTime CreatedAt { get; set; }
+}
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="pm" data-lines="6-7"></i>
+      <div class="callout step" data-with style="--a:var(--asp)">მაღაზიას სჭირდება: <b>რამდენად ვიყიდეთ</b> და <b>როდის დავამატეთ</b></div>
+      <div class="swr step" style="--c:#61affe">
+        <div class="rh"><span class="m">GET</span><span class="p">/api/products/1</span></div>
+        <div class="rr" style="padding-top:12px"><span class="sc">200</span><pre class="rb">{
+  <span class="k">"id"</span>: <span class="n">1</span>,
+  <span class="k">"name"</span>: <span class="s">"ლეპტოპი"</span>,
+  <span class="k">"price"</span>: <span class="n">2400</span>,
+  <span class="leak"><span class="k">"costPrice"</span>: <span class="n">1650</span></span>,
+  <span class="k">"createdAt"</span>: <span class="s">"2026-10-25T…"</span>
+}</pre></div>
+      </div>
+      <div class="problem step">ყველა მყიდველი ხედავს, <b>რამდენს ვიგებთ</b> 😬</div>
+    </div>
+  </div>
+  <div class="callout step mt" style="--a:var(--red)">წარმოიდგინეთ <code class="i">User</code> კლასი ველით <code class="i">PasswordHash</code> — და <code class="i">GET /api/users</code></div>
+  <aside class="notes">
+⏱ 1:12 · 3 წთ
+~ Visual Studio-ში Product-ს ორი ველი დაუმატე. საწყის სიაში CostPrice-ებიც ჩაწერე.
+→ ახალი ველები
+ბიზნესი მოდის ახალი მოთხოვნით: გვინდა ვიცოდეთ, რამდენად ვიყიდეთ პროდუქტი და როდის დავამატეთ. ორ ველს ვამატებთ.
+→ GET
+ახლა გავუშვათ GET. ? რა ხედავს მყიდველი? (costPrice-ს.)
+→ პრობლემა
+! ყველა მომხმარებელი, კონკურენტიც, ხედავს ჩვენს შესყიდვის ფასს — 2400-ად ვყიდით, 1650-ად ვყიდულობთ. ჩვენ ეს არ დაგვიწერია — უბრალოდ ველი დავამატეთ კლასში.
+→ User
+ახლა წარმოიდგინეთ მომხმარებლების კლასი, სადაც პაროლის hash ინახება. ერთი GET და ყველა hash გარეთაა. ეს ნამდვილი, ხშირი უსაფრთხოების შეცდომაა.
+  </aside>
+</section>
+
+<!-- 28. PROBLEM 3: CONTRACT -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">პრობლემა 3</div>
+  <h2>შიდა ცვლილება <span class="c-red">ამტვრევს კლიენტებს</span></h2>
+  <div class="flowrow mt" style="gap:12px">
+    <div class="fbox step" style="--a:var(--asp)"><div class="e">🧱</div><div class="l">Product.cs</div><div class="s"><span class="strike">Name</span> → Title</div></div>
+    <div class="farrow step" data-with style="--a:var(--asp)"><span class="ar">→</span>JSON</div>
+    <div class="fbox step" data-with style="--a:var(--api)"><div class="e">📨</div><div class="l">პასუხი</div><div class="s"><span class="strike">"name"</span> → "title"</div></div>
+    <div class="farrow step" style="--a:var(--red)"><span class="ar">→</span></div>
+    <div class="col" style="flex:1.2;gap:12px">
+      <div class="fbox step" data-with style="--a:var(--red)"><div class="l">🌐 საიტი</div><div class="s">product.name → undefined</div></div>
+      <div class="fbox step" data-with style="--a:var(--red)"><div class="l">📱 აპლიკაცია</div><div class="s">ველი ვერ მოიძებნა 💥</div></div>
+    </div>
+  </div>
+  <div class="grid2 mt2" style="gap:26px">
+    <div class="card accent step" style="--a:var(--asp)"><h3><span class="ico">🏠</span>Entity</h3><p class="small">ჩვენი <b>შიდა</b> საქმე. იცვლება, როცა ბიზნესს სჭირდება</p></div>
+    <div class="card accent step" data-with style="--a:var(--api)"><h3><span class="ico">🤝</span>JSON</h3><p class="small"><b>შეთანხმება</b> კლიენტთან (კონტრაქტი). არ უნდა შეიცვალოს შემთხვევით</p></div>
+  </div>
+  <aside class="notes">
+⏱ 1:15 · 2 წთ
+→ გადარქმევა
+მესამე პრობლემა. დავუშვათ, Name-ს Title-ს ვარქმევთ — ჩვენთვის უფრო გასაგებია. კოდში ერთი ცვლილებაა, Visual Studio ყველგან ჩაანაცვლებს.
+→ კლიენტები
+მაგრამ JSON-ში ველის სახელიც შეიცვალა: "name" აღარ არის, არის "title". საიტი ეძებს name-ს — undefined. აპლიკაცია, რომელიც უკვე მომხმარებლების ტელეფონებზეა, ფუჭდება.
+→ ორი როლი
+! პრობლემა ისაა, რომ ერთი კლასი ორ როლს ასრულებს. Entity — ჩვენი შიდა მოდელია. JSON — შეთანხმება კლიენტთან. ისინი სხვადასხვა მიზეზით იცვლება, ამიტომ ერთი კლასი უნდა გავყოთ.
+  </aside>
+</section>
+
+<!-- 29. DTO DEFINITION -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">გამოსავალი</div>
+  <h2><span class="grad">DTO</span> — Data Transfer Object</h2>
+  <p class="lead">კლასი, რომელიც მხოლოდ <b>მონაცემის გადასატანად</b> არსებობს — ლოგიკის გარეშე. თითოეული მოთხოვნისთვის — <b>საკუთარი ფორმა</b></p>
+  <div class="grid3 mt2" style="gap:24px">
+    <div class="card accent step" style="--a:var(--api)"><h3><span class="ico">📝</span>Request DTO</h3><p class="small">ბანკის <b>განაცხადის ფორმა</b>: მხოლოდ ის ველები, რაც შენ უნდა შეავსო</p><p class="tiny" style="margin-top:12px">კლიენტი → სერვერი · <b>CreateProductRequest</b></p></div>
+    <div class="card accent step" style="--a:var(--asp)"><h3><span class="ico">🗄️</span>Entity</h3><p class="small">ბანკის <b>შიდა ბაზა</b>: ყველაფერი, რაც ბანკმა იცის. გარედან არავინ ხედავს</p><p class="tiny" style="margin-top:12px">სერვერის შიგნით · <b>Product</b></p></div>
+    <div class="card accent step" style="--a:var(--mvc)"><h3><span class="ico">🧾</span>Response DTO</h3><p class="small">ბანკის <b>ამონაწერი</b>: მხოლოდ ის, რაც შენ უნდა ნახო</p><p class="tiny" style="margin-top:12px">სერვერი → კლიენტი · <b>ProductResponse</b></p></div>
+  </div>
+  <aside class="notes">
+⏱ 1:17 · 3 წთ
+სამივე პრობლემას ერთი გამოსავალი აქვს: DTO. Data Transfer Object — ობიექტი მონაცემის გადასატანად. მასში ლოგიკა არ არის — მხოლოდ ველები.
+→ Request
+ბანკი წარმოიდგინეთ. ანგარიშის გასახსნელად ფორმას ავსებთ: სახელი, პირადი ნომერი, ტელეფონი. ანგარიშის ნომერს ფორმაში არ წერთ — ბანკი გაძლევთ. ეს Request DTO-ა.
+→ Entity
+ბანკის ბაზაში კი ბევრად მეტია: შიდა რისკის შეფასება, ვინ გახსნა, როდის. ეს Entity-ა. გარედან არავინ ხედავს.
+→ Response
+ამონაწერი, რომელსაც ბანკი გაძლევთ — მხოლოდ თქვენთვის საჭირო: ნომერი, ნაშთი, ტრანზაქციები. ეს Response DTO-ა.
+! სამი სხვადასხვა ფორმა ერთი და იმავე ანგარიშისთვის.
+  </aside>
+</section>
+
+<!-- 30. DATA PATH -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">მონაცემის გზა · POST</div>
+  <h2>JSON → <span class="c-wf">Request</span> → <span class="c-asp">Entity</span> → <span class="c-mvc">Response</span> → JSON</h2>
+  <div class="flowrow mt" style="gap:10px;align-items:stretch">
+    <div class="dto in" style="--a:var(--pink);--d:.1s;flex:1"><div class="h">📥 JSON</div><div class="f">"name": "მონიტორი"<br>"price": 650<br>"costPrice": 480</div></div>
+    <div class="farrow step" style="--a:var(--api);align-self:center;min-width:70px"><span class="ar">→</span></div>
+    <div class="dto step" data-with style="--a:var(--api);flex:1.1"><div class="h">CreateProductRequest</div><div class="f">Name<br>Price<br>CostPrice<br><span class="no">Id</span></div></div>
+    <div class="farrow step" style="--a:var(--asp);align-self:center;min-width:70px"><span class="ar">→</span>map</div>
+    <div class="dto step" data-with style="--a:var(--asp);flex:1.1"><div class="h">Product</div><div class="f"><span class="add">Id = 4</span> ← სერვერი<br>Name<br>Price<br>CostPrice<br><span class="add">CreatedAt</span> ← სერვერი</div></div>
+    <div class="farrow step" style="--a:var(--mvc);align-self:center;min-width:70px"><span class="ar">→</span>map</div>
+    <div class="dto step" data-with style="--a:var(--mvc);flex:1.1"><div class="h">ProductResponse</div><div class="f">Id<br>Name<br>Price<br><span class="no">CostPrice</span><br><span class="no">CreatedAt</span></div></div>
+    <div class="farrow step" style="--a:var(--pink);align-self:center;min-width:70px"><span class="ar">→</span></div>
+    <div class="dto step" data-with style="--a:var(--pink);flex:1"><div class="h">📤 JSON</div><div class="f">"id": 4<br>"name": "მონიტორი"<br>"price": 650</div></div>
+  </div>
+  <div class="grid3 mt2" style="gap:20px">
+    <div class="solve step"><b>Id</b> კლიენტს აღარ ეთხოვება</div>
+    <div class="solve step" data-with><b>CostPrice</b> გარეთ აღარ გადის</div>
+    <div class="solve step" data-with>Product-ის ცვლილება <b>JSON-ს არ ცვლის</b></div>
+  </div>
+  <aside class="notes">
+⏱ 1:20 · 3 წთ
+ასე გაივლის მონაცემი POST-ის დროს.
+→ Request
+კლიენტის JSON ჯდება CreateProductRequest-ში. მასში მხოლოდ სამი ველია. ! Id იქ საერთოდ არ არის — Swagger-იც აღარ მოითხოვს.
+→ Entity
+Request-იდან ვაწყობთ Product-ს. ამას mapping ჰქვია — ველების გადატანა ერთი ობიექტიდან მეორეში. სერვერი ამატებს Id-ს და CreatedAt-ს.
+→ Response
+პასუხისთვის Product-იდან ვაწყობთ ProductResponse-ს. CostPrice და CreatedAt აქ არ არის.
+→ JSON
+და კლიენტთან მიდის მხოლოდ სამი ველი.
+→ შედეგი
+! სამივე პრობლემა მოგვარდა: Id აღარ ეთხოვება, CostPrice არ გადის, Product-ის ცვლილება JSON-ს აღარ ეხება.
+  </aside>
+</section>
+
+<!-- 31. RECORDS -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">🧑‍💻 ვწერთ · Dtos ფოლდერი</div>
+  <h2>DTO-ები კოდში — <span class="grad">record</span></h2>
+  <div class="grid2" style="grid-template-columns:1.2fr 1fr;align-items:start;gap:30px">
+    <code-block id="r" lang="csharp" cls="sm" title="Dtos/*.cs">
+public record CreateProductRequest(
+    string Name,
+    decimal Price,
+    decimal CostPrice);
+
+public record UpdateProductRequest(
+    string Name,
+    decimal Price,
+    decimal CostPrice);
+
+public record ProductResponse(
+    int Id,
+    string Name,
+    decimal Price);
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="r" data-lines="1-4"></i>
+      <div class="callout step" data-with style="--a:var(--api)">შექმნისას — <b>Id-ს გარეშე</b></div>
+      <i class="codestep" data-for="r" data-lines="6-9"></i>
+      <div class="callout step" data-with style="--a:var(--wf)">განახლებისას — <b>Id-ს გარეშე</b>. Id მისამართიდან მოდის</div>
+      <i class="codestep" data-for="r" data-lines="11-14"></i>
+      <div class="callout step" data-with style="--a:var(--mvc)">პასუხში — <b>CostPrice-ის გარეშე</b></div>
+      <div class="card accent step" style="--a:var(--net);padding:18px 22px">
+        <h3 style="font-size:22px"><span class="ico">✍️</span>რატომ record?</h3>
+        <p class="small">ერთი ხაზი = properties + constructor. DTO-ს მეტი არ სჭირდება</p>
+        <p class="tiny" style="margin-top:8px">სახელები: <b>…Request</b> — შემოდის · <b>…Response</b> — გადის</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 1:23 · 3 წთ
+~ შექმენი ფოლდერი Dtos, თითო ფაილი თითო DTO-სთვის. სლაიდზე ერთადაა მოცემული, რომ ეტეოდეს.
+DTO-სთვის class-იც გამოდგება, მაგრამ record უფრო მოკლეა.
+→ Create
+CreateProductRequest — სამი ველი. Id არ არის.
+→ Update
+UpdateProductRequest — იგივე ველები, Id-ის გარეშე. ? ერთნაირია — რატომ ცალკე? (ხვალ შეიძლება განსხვავდებოდეს: მაგალითად, განახლებისას ფასის შეცვლა აიკრძალოს. ცალკე კლასით ერთი მეორეს არ დააზიანებს.)
+→ Response
+ProductResponse — Id, Name, Price. CostPrice არ არის.
+→ record
+record: ფრჩხილებში ჩამოწერილი პარამეტრები ავტომატურად ხდება property-ები და constructor. ! JSON-ში Name თვითონ გადაიქცევა "name"-ად, როგორც ადრე.
+~ record-ს თვისებები init-only-ია — შექმნის შემდეგ ვერ შეიცვლება. DTO-სთვის ეს კარგია: გადასატანი მონაცემი გზაში არ უნდა შეიცვალოს.
+  </aside>
+</section>
+
+<!-- 32. MAPPING -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">🧑‍💻 ვწერთ · Mapping</div>
+  <h2>ერთი ფორმიდან მეორეში — <span class="grad">ხელით</span></h2>
+  <div class="grid2" style="grid-template-columns:1.3fr 1fr;align-items:start;gap:30px">
+    <code-block id="m" lang="csharp" cls="sm" title="Dtos/ProductMappings.cs">
+public static class ProductMappings
+{
+    public static ProductResponse ToResponse(this Product p)
+    {
+        return new ProductResponse(p.Id, p.Name, p.Price);
+    }
+
+    public static Product ToEntity(this CreateProductRequest r)
+    {
+        return new Product
+        {
+            Name = r.Name,
+            Price = r.Price,
+            CostPrice = r.CostPrice,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+}
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="m" data-lines="3-6"></i>
+      <div class="callout step" data-with style="--a:var(--mvc)">Product → Response. <code class="i">this</code> საშუალებას გვაძლევს დავწეროთ <code class="i">product.ToResponse()</code></div>
+      <i class="codestep" data-for="m" data-lines="8-17"></i>
+      <div class="callout step" data-with style="--a:var(--asp)">Request → Product. <b>CreatedAt</b>-ს სერვერი ავსებს</div>
+      <div class="callout step" style="--a:var(--net)">ბიბლიოთეკებიც არსებობს (AutoMapper, Mapster). ჩვენ <b>ხელით</b> ვწერთ — ყველა ველი <b>ჩანს</b>, არაფერი იმალება</div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 1:26 · 3 წთ
+mapping-ის კოდი Controller-ში რომ არ გავაბნიოთ, ერთ ადგილას ვწერთ.
+→ ToResponse
+პირველი მეთოდი Product-იდან ProductResponse-ს აწყობს. ! this პარამეტრის წინ — extension method. ის საშუალებას გვაძლევს მეთოდი ისე გამოვიძახოთ, თითქოს Product-ს ეკუთვნის: product.ToResponse().
+~ extension method-ისთვის კლასი და მეთოდი static უნდა იყოს.
+→ ToEntity
+მეორე — Request-იდან Product. Id-ს აქ არ ვანიჭებთ — ამას Controller-ი აკეთებს _nextId-ით. CreatedAt — ახლანდელი დრო.
+→ ბიბლიოთეკები
+? ბევრი ველი რომ იყოს? არსებობს ბიბლიოთეკები, რომლებიც ამას ავტომატურად აკეთებენ. ! ჩვენ ხელით ვწერთ: ყველა ველი თვალწინაა, და თუ ველი დაგავიწყდათ — მაშინვე ჩანს. ავტომატური mapping შეცდომას მალავს.
+  </aside>
+</section>
+
+<!-- 33. CONTROLLER WITH DTOs -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">🧑‍💻 ვწერთ · Controller</div>
+  <h2>Controller — <span class="grad">DTO-ებით</span></h2>
+  <div class="grid2" style="grid-template-columns:1.45fr 1fr;align-items:start;gap:26px">
+    <code-block id="cd" lang="csharp" cls="xs" title="Controllers/ProductsController.cs">
+[HttpGet]
+public ActionResult<List<ProductResponse>> GetAll()
+{
+    return _products.Select(p => p.ToResponse()).ToList();
+}
+
+[HttpGet("{id}")]
+public ActionResult<ProductResponse> GetById(int id)
+{
+    var product = _products.FirstOrDefault(p => p.Id == id);
+    if (product is null)
+        return NotFound();
+
+    return product.ToResponse();
+}
+
+[HttpPost]
+public ActionResult<ProductResponse> Create(CreateProductRequest request)
+{
+    var product = request.ToEntity();
+    product.Id = _nextId++;
+    _products.Add(product);
+
+    return CreatedAtAction(nameof(GetById),
+        new { id = product.Id }, product.ToResponse());
+}
+    </code-block>
+    <div class="col" style="gap:14px">
+      <i class="codestep" data-for="cd" data-lines="2,4"></i>
+      <div class="callout step" data-with style="--a:var(--mvc)">სია: <b>თითოეული</b> Product → Response · <code class="i">Select</code></div>
+      <i class="codestep" data-for="cd" data-lines="8,14"></i>
+      <div class="callout step" data-with style="--a:var(--mvc)">ერთი: <code class="i">product.ToResponse()</code></div>
+      <i class="codestep" data-for="cd" data-lines="18,20-22"></i>
+      <div class="callout step" data-with style="--a:var(--api)">შემოდის <b>Request</b>, ინახება <b>Product</b></div>
+      <i class="codestep" data-for="cd" data-lines="24-25"></i>
+      <div class="callout step" data-with style="--a:var(--mvc)">გადის <b>Response</b></div>
+      <div class="solve step">Controller-ი <code class="i">Product</code>-ს გარეთ <b>აღარ</b> აბრუნებს</div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 1:29 · 4 წთ
+ახლა Controller გადავაკეთოთ. ~ ფაილის თავში: using ShopApi.Dtos;
+→ GetAll
+GetAll: ტიპი — ProductResponse-ების სია. Select-ით თითოეულ Product-ს Response-ად ვაქცევთ. ToList — რადგან ტიპი List-ია.
+→ GetById
+GetById: იგივე, ერთისთვის.
+→ Create · Request
+Create იღებს CreateProductRequest-ს. ToEntity-ით Product-ად ვაქცევთ, Id-ს ვანიჭებთ, ვინახავთ.
+→ Create · Response
+პასუხში — ToResponse(). ! შიგნით Product ინახება, გარეთ Response გადის.
+→ წესი
+! წესი: Controller-ის საზღვარზე Product არ გადის — არც შემოდის, არც გადის. ~ Swagger-ში აჩვენე: POST-ის მაგალითში id აღარ არის, GET-ში costPrice აღარ ჩანს.
+? Create-ში BadRequest-ის შემოწმებები სად წავიდა? — შემდეგ სლაიდზე.
+  </aside>
+</section>
+
+<!-- 34. PUT WITH DTO -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">🧑‍💻 ვწერთ</div>
+  <h2><span class="c-wf">PUT</span> — Id მხოლოდ <span class="grad">მისამართიდან</span></h2>
+  <div class="grid2" style="grid-template-columns:1.3fr 1fr;align-items:start;gap:30px">
+    <code-block id="pu" lang="csharp" cls="sm" title="Controllers/ProductsController.cs">
+[HttpPut("{id}")]
+public IActionResult Update(int id, UpdateProductRequest request)
+{
+    var product = _products.FirstOrDefault(p => p.Id == id);
+    if (product is null)
+        return NotFound();
+
+    product.Name = request.Name;
+    product.Price = request.Price;
+    product.CostPrice = request.CostPrice;
+    return NoContent();
+}
+    </code-block>
+    <div class="col" style="gap:16px">
+      <i class="codestep" data-for="pu" data-lines="1-2"></i>
+      <div class="callout step" data-with style="--a:var(--wf)">Id — <b>ერთადერთი</b> წყაროდან. „რომელს დავუჯეროთ?“ აღარ დგას</div>
+      <i class="codestep" data-for="pu" data-lines="8-10"></i>
+      <div class="callout step" data-with style="--a:var(--asp)">Request-ის ველებს Product-ში <b>ვაკოპირებთ</b>. Id და CreatedAt <b>ხელუხლებელია</b></div>
+      <div class="callout step" style="--a:var(--core)"><b>Delete</b> არ იცვლება — body არ აქვს, DTO არ სჭირდება</div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 1:33 · 2 წთ
+→ Id
+Update: Id მხოლოდ მისამართიდან მოდის, body-ში UpdateProductRequest-ია, მასში Id არ არის. პრობლემა 1 მოგვარდა.
+→ კოპირება
+Request-ის სამ ველს ვაკოპირებთ. ! Id-ს და CreatedAt-ს კლიენტი ვერ შეცვლის — ისინი Request-ში უბრალოდ არ არის.
+→ Delete
+Delete-ს body არ აქვს — არაფერი იცვლება.
+  </aside>
+</section>
+
+<!-- 35. VALIDATION -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">🧑‍💻 ვწერთ · ვალიდაცია</div>
+  <h2>წესები <span class="grad">DTO-ზე</span> — 400 ავტომატურად</h2>
+  <div class="grid2" style="grid-template-columns:1.2fr 1fr;align-items:start;gap:26px">
+    <code-block id="va" lang="csharp" cls="xs" title="Dtos/CreateProductRequest.cs">
+using System.ComponentModel.DataAnnotations;
+
+public record CreateProductRequest(
+    [Required(ErrorMessage = "სახელი სავალდებულოა")]
+    [StringLength(100)]
+    string Name,
+
+    [Range(0.01, 100000, ErrorMessage = "ფასი 0-ზე მეტი უნდა იყოს")]
+    decimal Price,
+
+    [Range(0, 100000)]
+    decimal CostPrice);
+    </code-block>
+    <div class="col" style="gap:14px">
+      <i class="codestep" data-for="va" data-lines="4-9"></i>
+      <div class="callout step" data-with style="--a:var(--api)">წესები — <b>ატრიბუტებით</b>, პირდაპირ ველზე</div>
+      <div class="swr step" style="--c:#49cc90">
+        <div class="rh"><span class="m">POST</span><span class="p">/api/products</span></div>
+        <div class="rr" style="padding-top:12px"><span class="sc bad">400</span><pre class="rb" style="font-size:13.5px">{
+  <span class="k">"title"</span>: <span class="s">"One or more validation</span>
+<span class="s">            errors occurred."</span>,
+  <span class="k">"status"</span>: <span class="n">400</span>,
+  <span class="k">"errors"</span>: {
+    <span class="k">"Name"</span>: [<span class="s">"სახელი სავალდებულოა"</span>],
+    <span class="k">"Price"</span>: [<span class="s">"ფასი 0-ზე მეტი უნდა იყოს"</span>]
+  }
+}</pre></div>
+      </div>
+      <div class="solve step"><code class="i">[ApiController]</code> ამოწმებს <b>მეთოდამდე</b> — Create-ში if-ები აღარ გვჭირდება</div>
+      <div class="callout step" style="--a:var(--asp)"><b>Conflict</b> რჩება Controller-ში — მისთვის <b>არსებული მონაცემი</b> უნდა ვნახოთ</div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 1:35 · 4 წთ
+DTO-ს კიდევ ერთი ბონუსი აქვს: ვალიდაცია.
+→ ატრიბუტები
+Required — სავალდებულო. StringLength — მაქსიმუმ 100 სიმბოლო. Range — დიაპაზონი. ErrorMessage — ჩვენი ტექსტი. ~ System.ComponentModel.DataAnnotations — ჩაშენებულია, NuGet არ სჭირდება.
+→ Swagger
+Swagger-ში ცარიელი სახელი და ფასი 0. პასუხი: 400 და errors — ველი და მისი შეცდომა. ! ერთად ყველა შეცდომა, არა სათითაოდ. frontend-ს შეუძლია თითოეული ველის ქვეშ წითლად აჩვენოს.
+→ [ApiController]
+! ჩვენი Create მეთოდი საერთოდ არ გამოძახებულა. [ApiController]-მა DTO შეამოწმა და 400 დააბრუნა მანამდე. ამიტომ Create-იდან ორი if წავშალეთ.
+→ Conflict
+? Conflict-ის შემოწმება ატრიბუტით რატომ ვერ ჩავწერეთ? (ატრიბუტი მხოლოდ თვითონ ველს ხედავს. „ასეთი სახელი უკვე არსებობს“ — ამისთვის სია უნდა გადავამოწმოთ. ეს Controller-ში რჩება.)
+~ UpdateProductRequest-ზეც იგივე ატრიბუტები დაამატე.
+  </aside>
+</section>
+
+<!-- 36. STRUCTURE -->
+<section class="slide" data-section="4 · DTO">
+  <div class="kicker">შედეგი</div>
+  <h2>ShopApi — <span class="grad">ახალი სტრუქტურა</span></h2>
+  <div class="grid2" style="grid-template-columns:1fr 1.1fr;gap:40px;align-items:center">
+    <div class="card in" style="--d:.1s">
+      <div class="tree">
+        <span class="n hi"><i>📦</i>ShopApi</span>
+        <span class="n lvl1 hi"><i>📁</i>Controllers/</span>
+        <span class="n lvl2"><i>📄</i>ProductsController.cs</span>
+        <span class="n lvl1 hi"><i>📁</i>Models/</span>
+        <span class="n lvl2"><i>📄</i>Product.cs <span class="tiny">← Entity · შიდა</span></span>
+        <span class="n lvl1 hi"><i>📁</i>Dtos/ <span class="tiny" style="color:var(--mvc)">← ახალი</span></span>
+        <span class="n lvl2"><i>📄</i>CreateProductRequest.cs</span>
+        <span class="n lvl2"><i>📄</i>UpdateProductRequest.cs</span>
+        <span class="n lvl2"><i>📄</i>ProductResponse.cs</span>
+        <span class="n lvl2"><i>📄</i>ProductMappings.cs</span>
+        <span class="n lvl1"><i>📄</i>Program.cs</span>
+      </div>
+    </div>
+    <ul class="check" style="margin-top:0">
+      <li class="step">სტატუს კოდი <b>სიმართლეს ამბობს</b></li>
+      <li class="step">Swagger <b>ზუსტ ფორმას</b> აჩვენებს</li>
+      <li class="step">კლიენტი Id-ს <b>აღარ გვიგზავნის</b></li>
+      <li class="step">CostPrice <b>გარეთ არ გადის</b></li>
+      <li class="step">ვალიდაცია — <b>ატრიბუტებით</b></li>
+    </ul>
+  </div>
+  <aside class="notes">
+⏱ 1:39 · 1 წთ
+ასე გამოიყურება ShopApi. ახალი ფოლდერი Dtos. Product გარეთ აღარ გადის. დღეს მიღწეული:
+→ სტატუსი
+სტატუსი სიმართლეს ამბობს.
+→ Swagger
+Swagger-ი ზუსტ ფორმას აჩვენებს.
+→ Id
+Id კლიენტისგან აღარ მოდის.
+→ CostPrice
+შიდა ველები გარეთ არ გადის.
+→ ვალიდაცია
+ვალიდაცია — ატრიბუტებით.
+  </aside>
+</section>
+
+<!-- ============ PART 5: PRACTICE ============ -->
+<!-- 37. TASK -->
+<section class="slide" data-section="5 · პრაქტიკა">
+  <div class="kicker">🧑‍💻 თქვენ აკეთებთ</div>
+  <h2>LibraryApi — <span class="grad">სწორი პასუხები</span></h2>
+  <div class="grid2" style="align-items:start">
+    <div class="card accent step left" style="--a:var(--mvc)">
+      <h3><span class="ico">📝</span>დავალება · LibraryApi</h3>
+      <ul class="clean small">
+        <li><code class="i">Book</code>-ს დაამატეთ <code class="i">PurchasePrice</code> და <code class="i">CreatedAt</code></li>
+        <li>ყველა endpoint: <code class="i">ActionResult&lt;T&gt;</code> / <code class="i">IActionResult</code> · <b>200 · 201 · 204 · 400 · 404</b></li>
+        <li><code class="i">Dtos/</code>: <b>CreateBookRequest</b>, <b>UpdateBookRequest</b>, <b>BookResponse</b> (PurchasePrice-ის გარეშე)</li>
+        <li><code class="i">BookMappings</code>: <code class="i">ToResponse()</code> და <code class="i">ToEntity()</code></li>
+        <li>ვალიდაცია: Title სავალდებულოა · Year 1450–2026 · Price &gt; 0</li>
+      </ul>
+      <p class="tiny mt" style="margin-top:14px">✓ მზადაა, როცა Swagger-ში POST-ს id არ აქვს, GET-ში purchasePrice არ ჩანს და ცარიელ Title-ზე 400 მოდის</p>
+    </div>
+    <div class="card accent step right" style="--a:var(--asp)">
+      <h3><span class="ico">⭐</span>ბონუსი</h3>
+      <ul class="clean small">
+        <li>POST: იგივე Title + Author უკვე არის → <code class="i">Conflict()</code> · 409</li>
+        <li><code class="i">GET /api/books/cheap</code> — <b>BookResponse</b>-ების სიით</li>
+        <li><code class="i">[ProducesResponseType]</code> — Swagger-ში 404 და 400 გამოაჩინეთ</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout step mt" style="--a:var(--api)">წესი: <b>ჯერ ცდი თვითონ</b> → გვერდით მჯდომს ჰკითხე → მერე მე. ShopApi — თქვენი ნიმუშია 🙂</div>
+  <aside class="notes">
+⏱ 1:40 · 12 წთ · ~ სლაიდი ეკრანზე დატოვე და ოთახში იარე. ვინც ვერ მორჩება — საშინაოდ დაასრულებს.
+→ დავალება
+წინა ლექციის LibraryApi. Book-ს ორი შიდა ველი ემატება. მერე ყველა endpoint — სწორი სტატუსებით. DTO-ები, mapping და ვალიდაცია. ! რიგი: ჯერ სტატუსები, გატესტეთ, მერე DTO-ები.
+~ Year-ის Range-ისთვის: [Range(1450, 2026)].
+→ ბონუსი
+ვინც ადრე მორჩება: Conflict, იაფი წიგნები DTO-ებით და ProducesResponseType.
+→ წესი
+! ShopApi თქვენს თვალწინაა — ნიმუშია. გადაწერა კი არა, ყოველი ხაზის გაგებაა მიზანი.
+  </aside>
+</section>
+
+<!-- 38. COMMON MISTAKES -->
+<section class="slide" data-section="5 · პრაქტიკა">
+  <div class="kicker">ყურადღება</div>
+  <h2>ხშირი <span class="c-red">შეცდომები</span></h2>
+  <div class="col" style="gap:14px">
+    <div class="grid2 step" style="grid-template-columns:1fr 1fr;gap:18px"><div class="problem"><code class="i">return Ok("ვერ მოიძებნა")</code> — შეცდომა 200-ით</div><div class="solve"><code class="i">return NotFound("ვერ მოიძებნა")</code></div></div>
+    <div class="grid2 step" style="grid-template-columns:1fr 1fr;gap:18px"><div class="problem">ერთ endpoint-ში <code class="i">Product</code> დარჩა — ველი „გაიპარა“</div><div class="solve">ყველგან <code class="i">.ToResponse()</code> · Swagger-ში შეამოწმე</div></div>
+    <div class="grid2 step" style="grid-template-columns:1fr 1fr;gap:18px"><div class="problem">Request DTO-ში <code class="i">Id</code> ჩაწერე</div><div class="solve">Id — სერვერი ანიჭებს ან მისამართიდან მოდის</div></div>
+    <div class="grid2 step" style="grid-template-columns:1fr 1fr;gap:18px"><div class="problem">POST აბრუნებს <code class="i">Ok(...)</code></div><div class="solve"><code class="i">CreatedAtAction(...)</code> · 201</div></div>
+    <div class="grid2 step" style="grid-template-columns:1fr 1fr;gap:18px"><div class="problem"><code class="i">Select</code>-ის შემდეგ <code class="i">.ToList()</code> დაგავიწყდა</div><div class="solve">კომპილატორი გეტყვის — <b>წაიკითხე შეცდომა</b> 🙂</div></div>
+  </div>
+  <aside class="notes">
+⏱ 1:52 · 3 წთ · ~ როცა ბევრს ერთი და იგივე შეცდომა აქვს, ეს სლაიდი აჩვენე.
+→ Ok ტექსტით
+პირველი და ყველაზე ხშირი: ძველი ჩვევა — Ok და შეცდომის ტექსტი. სტატუსი 200-ია.
+→ Product დარჩა
+DTO ერთ endpoint-ში დაგავიწყდათ — და შიდა ველი გარეთაა. ყოველი endpoint Swagger-ში შეამოწმეთ.
+→ Id Request-ში
+Request-ში Id ზედმეტია — ზუსტად ის პრობლემა, რომელსაც DTO ხსნის.
+→ POST Ok-ით
+POST-ზე 201 და CreatedAtAction.
+→ ToList
+Select აბრუნებს IEnumerable-ს, ტიპი კი List-ია. ! კომპილატორის შეცდომა მეგობარია — წაიკითხეთ, ზუსტად გეტყვით, რა აკლია.
+  </aside>
+</section>
+
+<!-- ============ SUMMARY ============ -->
+<section class="slide" data-section="შეჯამება">
+  <div class="kicker">შევამოწმოთ</div>
+  <h2>5 კითხვა</h2>
+  <div class="qa"><span class="n">1</span><span class="q">რისგან შედგება HTTP პასუხი?</span><span class="a step">Status line (სტატუს კოდი) · Headers · Body</span></div>
+  <div class="qa"><span class="n">2</span><span class="q">რატომ არის ცუდი <code class="i">return Ok("ვერ მოიძებნა")</code>?</span><span class="a step">frontend-ი სტატუსს უყურებს — 200 = წარმატება. სწორია <code class="i">NotFound()</code> · 404</span></div>
+  <div class="qa"><span class="n">3</span><span class="q"><code class="i">IActionResult</code> თუ <code class="i">ActionResult&lt;T&gt;</code> — რომელი როდის?</span><span class="a step">body-ში მონაცემი → <code class="i">ActionResult&lt;T&gt;</code> (Swagger-მაც იცის) · მხოლოდ სტატუსი (204) → <code class="i">IActionResult</code></span></div>
+  <div class="qa"><span class="n">4</span><span class="q">რა არის DTO და რატომ გვაქვს Request და Response ცალ-ცალკე?</span><span class="a step">მონაცემის გადასატანი კლასი · Request — რას ვიღებთ (Id-ს გარეშე) · Response — რას ვაჩვენებთ (შიდა ველების გარეშე)</span></div>
+  <div class="qa"><span class="n">5</span><span class="q">ცარიელ სახელზე 400-ს ვინ აბრუნებს, თუ Create-ში if აღარ გვაქვს?</span><span class="a step"><code class="i">[ApiController]</code> — DTO-ს ატრიბუტებს მეთოდამდე ამოწმებს</span></div>
+  <aside class="notes">
+⏱ 1:55 · 3 წთ · ~ კითხვა ხმამაღლა, დაელოდე პასუხს, მერე → პასუხის გამოსაჩენად
+? 1. HTTP პასუხის ნაწილები?
+→ პასუხი 1
+? 2. Ok და შეცდომის ტექსტი?
+→ პასუხი 2
+? 3. IActionResult თუ ActionResult&lt;T&gt;?
+→ პასუხი 3
+? 4. DTO?
+→ პასუხი 4
+? 5. ვინ აბრუნებს 400-ს?
+→ პასუხი 5
+  </aside>
+</section>
+
+<!-- 40. FINAL -->
+<section class="slide" data-section="შეჯამება">
+  <div class="kicker in" style="color:var(--mvc)">დღეს</div>
+  <h2 class="in" style="--d:.1s">სწორი <span class="grad">სტატუსი</span> + სწორი <span class="grad">ფორმა</span></h2>
+  <div class="grid2" style="grid-template-columns:1fr 1.1fr;gap:40px;align-items:start">
+    <div class="col" style="gap:18px">
+      <div class="card accent step" style="--a:var(--mvc)"><h3><span class="ico">🏠</span>საშინაო</h3><p class="small">LibraryApi: დავალება სრულად + ბონუსები. ყველა endpoint Swagger-ში გატესტეთ — <b>შეცდომის</b> შემთხვევებიც</p></div>
+      <div class="card accent step" style="--a:var(--asp)"><h3><span class="ico">⏭️</span>შემდეგი ლექცია</h3><p class="small">Controller-ი ახლა ბევრს აკეთებს. მონაცემებს <b>თავისი სახლი</b> სჭირდება — და ჩნდება კითხვა: <b>ვინ ქმნის ობიექტებს?</b></p></div>
+    </div>
+    <div class="step" data-with>
+      <div class="card" style="padding:20px 24px">
+        <h3 style="font-size:22px">ProductsController-ის საქმეები დღეს</h3>
+        <ul class="clean small">
+          <li>📋 პროდუქტების <b>სიას ინახავს</b> (static List)</li>
+          <li>🔢 Id-ებს <b>ითვლის</b> (_nextId)</li>
+          <li>🔍 ეძებს, <b>ამოწმებს</b> კონფლიქტს</li>
+          <li>🔁 DTO ↔ Product <b>mapping</b>-ს იძახებს</li>
+          <li>📨 <b>HTTP</b>-ს წყვეტს: 200 · 201 · 404…</li>
+        </ul>
+      </div>
+      <div class="callout mt" style="--a:var(--asp)">ხუთი საქმე ერთ კლასში. მეორე Controller-საც რომ დასჭირდეს პროდუქტები? 🤔</div>
+    </div>
+  </div>
+  <aside class="notes">
+⏱ 1:58 · 2 წთ
+დღეს ორი რამ ვისწავლეთ. სტატუსი: IActionResult, მზა მეთოდები, ActionResult&lt;T&gt;. ფორმა: DTO — Request, Response, mapping და ვალიდაცია.
+→ საშინაო
+საშინაო: LibraryApi სრულად. ! შეცდომის შემთხვევებიც გატესტეთ — 404, 400, 409. ზუსტად ისინი ავიწყდებათ ყველას.
+→ შემდეგი
+? შეხედეთ ჩვენს ProductsController-ს: რამდენ საქმეს აკეთებს? (ხუთს.) სია, Id-ები, შემოწმება, mapping, HTTP. ახლა წარმოიდგინეთ, რომ მეორე Controller-საც სჭირდება პროდუქტები.
+! შემდეგ ლექციაზე მონაცემებს საკუთარ კლასში გავიტანთ და ვნახავთ, რა ახალი კითხვა ჩნდება: ვინ ქმნის ობიექტებს?
+მადლობა! კითხვები?
+  </aside>
+</section>
