@@ -1,10 +1,10 @@
-# ASP.NET Core Web API — ლექცია 3 — API-ის პასუხი: IActionResult და DTO
+# ASP.NET Core Web API — ლექცია 3 — DTO და Mapping
 
 ანიმაციური HTML პრეზენტაცია + ლექტორის სცენარი.
 
 | ფაილი | რა არის |
 |---|---|
-| `index.html` | პრეზენტაცია (40 სლაიდი) |
+| `index.html` | პრეზენტაცია (33 სლაიდი) |
 | `script.html` | ლექციის სცენარი — წასაკითხად / დასაბეჭდად |
 | `deck/` | წყარო: სლაიდები და შენიშვნები (`ar.html`), ძრავი (`engine.*`), ბილდი (`build_deck.py`) |
 
@@ -20,5 +20,5 @@
 
 ```bash
 cd deck && pip install pygments && python3 build_deck.py ar
-cp ../out/lecture-03-action-results-dto.html ../index.html && cp ../out/lecture-03-action-results-dto-script.html ../script.html
+cp ../out/lecture-03-dto-mapping.html ../index.html && cp ../out/lecture-03-dto-mapping-script.html ../script.html
 ```

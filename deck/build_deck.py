@@ -4,7 +4,7 @@ import re, sys, html, pathlib, build
 
 ROOT = pathlib.Path(__file__).parent
 DECKS = {
-    'ar': ('ლექცია 3 — API-ის პასუხი: IActionResult და DTO', 'lecture-03-action-results-dto'),
+    'ar': ('ლექცია 3 — DTO და Mapping', 'lecture-03-dto-mapping'),
 }
 
 def note_html(text):
